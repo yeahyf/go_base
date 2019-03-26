@@ -1,11 +1,12 @@
 package s3
 
 import (
+	"bytes"
 	"gobase/log"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"path"
-	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
@@ -14,10 +15,10 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 )
 
-func Delete(destKey string, s3Service *s3.S3, bucket string) error {
+func Delete(destKey *string, s3Service *s3.S3, bucket *string) error {
 	input := &s3.DeleteObjectInput{
-		Bucket: aws.String(bucket),
-		Key:    aws.String(destKey),
+		Bucket: bucket,
+		Key:    destKey,
 	}
 
 	_, err := s3Service.DeleteObject(input)
@@ -36,14 +37,31 @@ func Delete(destKey string, s3Service *s3.S3, bucket string) error {
 	return nil
 }
 
-func Upload(srcFile *string, destKey *string, s3Service *s3.S3, bucket string) error {
+func Upload(srcFile *string, destKey *string, s3Service *s3.S3, bucket *string, acl *string) error {
+	file, err := os.Open(*srcFile)
+	if err != nil {
+		log.L.Error(err)
+		return err
+	}
+	defer file.Close()
+
+	fileInfo, _ := file.Stat()
+	var size = fileInfo.Size()
+	buffer := make([]byte, size)
+	file.Read(buffer)
+	contentType := http.DetectContentType(buffer)
+
 	input := &s3.PutObjectInput{
-		Body:   aws.ReadSeekCloser(strings.NewReader(*srcFile)),
-		Bucket: aws.String(bucket),
-		Key:    aws.String(*destKey),
+		Bucket:        bucket,
+		Key:           destKey,
+		ACL:           acl,
+		Body:          bytes.NewReader(buffer),
+		ContentLength: aws.Int64(size),
+		ContentType:   &contentType,
+		StorageClass:  aws.String(s3.ObjectStorageClassIntelligentTiering),
 	}
 
-	_, err := s3Service.PutObject(input)
+	_, err = s3Service.PutObject(input)
 	if err != nil {
 		if aerr, ok := err.(awserr.Error); ok {
 			switch aerr.Code() {
@@ -89,11 +107,11 @@ func Download(srcFile *string, destPath *string, s3Service *s3.S3, bucket string
 	return err
 }
 
-func GetS3Service(region string) (*s3.S3, error) {
+func GetS3Service(region *string) (*s3.S3, error) {
 	var s3Service *s3.S3
 	//创建会话，默认采用配置方式，区域直接硬编码
 	sess, err := session.NewSession(&aws.Config{
-		Region:      aws.String(region),
+		Region:      region,
 		Credentials: credentials.NewSharedCredentials("", "default"),
 	})
 	if err != nil {

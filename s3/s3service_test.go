@@ -1,6 +1,10 @@
 package s3
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/aws/aws-sdk-go/service/s3"
+)
 
 func TestUpload(t *testing.T) {
 	s3Service, err := GetS3Service("us-east-2")
@@ -9,8 +13,8 @@ func TestUpload(t *testing.T) {
 	}
 	srcFile := "/Users/yeahyf/go/src/gobase/s3/s3service.go"
 	destKey := "s3service.go"
-
-	err = Upload(&srcFile, &destKey, s3Service, "campaign-resource-lib")
+	//公共读
+	err = Upload(&srcFile, &destKey, s3Service, "campaign-resource-lib", s3.ObjectCannedACLPublicRead)
 	if err != nil {
 		t.Fail()
 	}
