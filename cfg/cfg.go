@@ -82,13 +82,13 @@ func Load(configPath *string) {
 }
 
 //获取字符串
-func GetString(key *string) string {
-	return p.Get(*key)
+func GetString(key string) string {
+	return p.Get(key)
 }
 
 //获取整形
-func GetInt(key *string) int {
-	s := p.Get(*key)
+func GetInt(key string) int {
+	s := p.Get(key)
 	value, err := strconv.Atoi(s)
 	if err != nil {
 		log.L.Error(err)
@@ -98,8 +98,8 @@ func GetInt(key *string) int {
 }
 
 //获取整形数组
-func GetIntArray(key *string) []int {
-	s := p.Get(*key)
+func GetIntArray(key string) []int {
+	s := p.Get(key)
 	array := strings.Split(s, ",")
 	r := make([]int, len(array))
 	var err error
@@ -111,4 +111,3 @@ func GetIntArray(key *string) []int {
 	}
 	return r
 }
-
