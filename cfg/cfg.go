@@ -97,6 +97,16 @@ func GetInt(key string) int {
 	return value
 }
 
+//获取布尔型
+func GetBool(key string) bool {
+	value, err := strconv.ParseBool(p.Get(key))
+	if err != nil {
+		log.L.Error(err)
+		return false
+	}
+	return value
+}
+
 //获取整形数组
 func GetIntArray(key string) []int {
 	s := p.Get(key)
@@ -110,4 +120,10 @@ func GetIntArray(key string) []int {
 		}
 	}
 	return r
+}
+
+//获取整形数组
+func GetStringArray(key string) []string {
+	s := p.Get(key)
+	return strings.Split(s, ",")
 }
