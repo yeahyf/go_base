@@ -2,11 +2,11 @@ package file
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
 )
-import "io"
 
 //判断文件是否存在或者不是文件
 //返回true标识文件存在，false标识不存在
