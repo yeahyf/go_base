@@ -107,12 +107,12 @@ func Download(srcFile *string, destPath *string, s3Service *s3.S3, bucket string
 	return err
 }
 
-func GetS3Service(region *string) (*s3.S3, error) {
+func GetS3ServiceAccessID(region, accessid, accesskey *string) (*s3.S3, error) {
 	var s3Service *s3.S3
 	//创建会话，默认采用配置方式，区域直接硬编码
 	sess, err := session.NewSession(&aws.Config{
 		Region:      region,
-		Credentials: credentials.NewSharedCredentials("", "default"),
+		Credentials: credentials.NewStaticCredentials(*accessid, *accesskey, ""),
 	})
 	if err != nil {
 		log.L.Errorf("Get AWS Session Error!")
@@ -126,4 +126,30 @@ func GetS3Service(region *string) (*s3.S3, error) {
 		return s3Service, err
 	}
 	return s3.New(sess), nil
+}
+
+func GetS3ServiceProfile(region, profile *string) (*s3.S3, error) {
+	var s3Service *s3.S3
+	//创建会话，默认采用配置方式，区域直接硬编码
+	sess, err := session.NewSession(&aws.Config{
+		Region:      region,
+		Credentials: credentials.NewSharedCredentials("", *profile),
+	})
+	if err != nil {
+		log.L.Errorf("Get AWS Session Error!")
+		return s3Service, err
+	}
+
+	_, err = sess.Config.Credentials.Get()
+
+	if err != nil {
+		log.L.Errorf("AWS Config Credentials Error!")
+		return s3Service, err
+	}
+	return s3.New(sess), nil
+}
+
+func GetS3Service(region *string) (*s3.S3, error) {
+	profile := "default"
+	return GetS3ServiceProfile(region, &profile)
 }
