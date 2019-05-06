@@ -11,34 +11,37 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 )
 
-var MongoClient *mongo.Client
-var timeOut time.Duration
-var ctx context.Context
+var client *mongo.Client
 
 //创建一个mongodb客户端
-func NewMongoClient(address *string, timeout *time.Duration) {
-	timeOut := *timeout
-	ctx, _ = context.WithTimeout(context.Background(), timeOut*time.Second)
+func NewMongoClient(address *string, timeout, maxsize, idletime int) error {
+
 	var err error
-	MongoClient, err = mongo.Connect(ctx, options.Client().ApplyURI(*address))
+	clientOptions := options.Client()
+	client, err = mongo.Connect(context.TODO(), clientOptions.ApplyURI(*address),
+		clientOptions.SetConnectTimeout(time.Duration(timeout)*time.Second),
+		clientOptions.SetMaxPoolSize(uint16(maxsize)),
+		clientOptions.SetMaxConnIdleTime(time.Duration(idletime)*time.Second))
+
 	if err != nil {
 		log.L.Error(err)
-		panic(err)
+		return err
 	}
-	err = MongoClient.Ping(ctx, readpref.Primary())
+	err = client.Ping(context.TODO(), readpref.Primary())
 	if err != nil {
 		log.L.Error(err)
-		panic(err)
+		return err
 	}
 	log.L.Debug("Connected to MongoDB!")
+	return nil
 }
 
 //======================
 
 //插入一条记录
 func InsertOne(dbName, colName *string, document interface{}) (interface{}, error) {
-	col := MongoClient.Database(*dbName).Collection(*colName)
-	insertResult, err := col.InsertOne(ctx, document)
+	collection := client.Database(*dbName).Collection(*colName)
+	insertResult, err := collection.InsertOne(context.TODO(), document)
 	if err != nil {
 		log.L.Error(err)
 		return nil, err
@@ -50,8 +53,8 @@ func InsertOne(dbName, colName *string, document interface{}) (interface{}, erro
 
 //插入多条记录
 func InsertMany(dbName, colName *string, documents []interface{}) ([]interface{}, error) {
-	col := MongoClient.Database(*dbName).Collection(*colName)
-	insertManyResult, err := col.InsertMany(ctx, documents)
+	collection := client.Database(*dbName).Collection(*colName)
+	insertManyResult, err := collection.InsertMany(context.TODO(), documents)
 	if err != nil {
 		log.L.Error(err)
 		return nil, err
@@ -60,12 +63,10 @@ func InsertMany(dbName, colName *string, documents []interface{}) ([]interface{}
 	return insertManyResult.InsertedIDs, err
 }
 
-//======================
-
 //按照条件删除
 func Delete(dbName, colName *string, key bson.M) (int64, error) {
-	col := MongoClient.Database(*dbName).Collection(*colName)
-	deleteResult, err := col.DeleteMany(ctx, key)
+	col := client.Database(*dbName).Collection(*colName)
+	deleteResult, err := col.DeleteMany(context.TODO(), key)
 	if err != nil {
 		log.L.Error(err)
 		return 0, err
@@ -77,9 +78,9 @@ func Delete(dbName, colName *string, key bson.M) (int64, error) {
 //======================
 
 //更新数据
-func Update(dbName, colName *string, filter *bson.M, update *bson.D) (int64, int64, error) {
-	col := MongoClient.Database(*dbName).Collection(*colName)
-	updateResult, err := col.UpdateMany(ctx, filter, update)
+func Update(dbName, colName *string, filter bson.M, update bson.M) (int64, int64, error) {
+	col := client.Database(*dbName).Collection(*colName)
+	updateResult, err := col.UpdateMany(context.TODO(), filter, update)
 	if err != nil {
 		log.L.Error(err)
 		return 0, 0, nil
@@ -91,18 +92,26 @@ func Update(dbName, colName *string, filter *bson.M, update *bson.D) (int64, int
 //======================
 
 //根据条件查询
-func Select(dbName, colName *string, key bson.M) ([]bson.M, error) {
-	col := MongoClient.Database(*dbName).Collection(*colName)
-	cursor, err := col.Find(ctx, key)
+func Select(dbName, colName *string, key bson.M, max int64) ([]bson.M, error) {
+	col := client.Database(*dbName).Collection(*colName)
+
+	var findOptions *options.FindOptions
+	var cursor *mongo.Cursor
+	var err error
+	if max > 0 {
+		findOptions = options.Find()
+		findOptions.SetLimit(max)
+		cursor,err = col.Find(context.TODO(), key, findOptions)
+	}else{
+		cursor,err = col.Find(context.TODO(), key)
+	}
 	if err != nil {
 		log.L.Error(err)
 		return nil, err
 	}
-	defer cursor.Close(ctx)
-
+	defer cursor.Close(context.TODO())
 	results := make([]bson.M, 0, 10)
-
-	for cursor.Next(ctx) {
+	for cursor.Next(context.TODO()) {
 		var result bson.M
 		err := cursor.Decode(&result)
 		if err != nil {
@@ -120,7 +129,7 @@ func Select(dbName, colName *string, key bson.M) ([]bson.M, error) {
 //======================
 
 func CloseClient() {
-	if MongoClient != nil {
-		MongoClient.Disconnect(context.TODO())
+	if client != nil {
+		client.Disconnect(context.TODO())
 	}
 }
