@@ -2,7 +2,7 @@ package mgo
 
 import (
 	"fmt"
-	"gobase/log"
+	log "gobase/zap"
 	"testing"
 	"time"
 
@@ -19,8 +19,8 @@ func TestNew(t *testing.T) {
 	logFile := "/Users/yeahyf/go/src/pubaws/conf/seelog.xml"
 	log.SetLogConf(&logFile)
 	address := "mongodb://yifan:123456@192.168.1.10:27017/yifants"
-	err := NewMongoClient(&address,10,2,10)
-	if err != nil{
+	err := NewMongoClient(&address, 10, 2, 10)
+	if err != nil {
 		t.Fatal(err)
 		t.Fail()
 	}
@@ -31,8 +31,8 @@ func TestInsert(t *testing.T) {
 	logFile := "/Users/yeahyf/go/src/pubaws/conf/seelog.xml"
 	log.SetLogConf(&logFile)
 	address := "mongodb://yifan:123456@192.168.1.10:27017/yifants"
-	err := NewMongoClient(&address,10,2,10)
-	if err != nil{
+	err := NewMongoClient(&address, 10, 2, 10)
+	if err != nil {
 		t.Fatal(err)
 		t.Fail()
 	}
@@ -54,7 +54,7 @@ func TestInsertMany(t *testing.T) {
 	logFile := "/Users/yeahyf/go/src/pubaws/conf/seelog.xml"
 	log.SetLogConf(&logFile)
 	address := "mongodb://yifan:123456@192.168.1.10:27017/yifants"
-	NewMongoClient(&address,10,2,10)
+	NewMongoClient(&address, 10, 2, 10)
 	dbName := "yifants"
 	col := "trainers"
 	document1 := Trainer{"charlse", 10, "sz"}
@@ -76,13 +76,13 @@ func TestDelete(t *testing.T) {
 	logFile := "/Users/yeahyf/go/src/pubaws/conf/seelog.xml"
 	log.SetLogConf(&logFile)
 	address := "mongodb://yifan:123456@192.168.1.10:27017/yifants"
-	NewMongoClient(&address,10,2,10)
+	NewMongoClient(&address, 10, 2, 10)
 
 	dbName := "yifants"
 	col := "updapp"
 
 	mytime := time.Now().Add(-time.Duration(3) * time.Hour * 24).Format("2006-01-02 15:04:05")
-	filer := bson.M{"pubid":"a7fpmwda", "platform":"2", "status":"1", "utime":bson.M{"$lt": mytime}}
+	filer := bson.M{"pubid": "a7fpmwda", "platform": "2", "status": "1", "utime": bson.M{"$lt": mytime}}
 
 	result, err := Delete(&dbName, &col, filer)
 	if err != nil {
@@ -98,7 +98,7 @@ func TestSelect(t *testing.T) {
 	logFile := "/Users/yeahyf/go/src/pubaws/conf/seelog.xml"
 	log.SetLogConf(&logFile)
 	address := "mongodb://yifan:123456@192.168.1.10:27017/yifants"
-	NewMongoClient(&address,10,2,10)
+	NewMongoClient(&address, 10, 2, 10)
 
 	dbName := "yifants"
 	col := "trainers"
@@ -107,7 +107,7 @@ func TestSelect(t *testing.T) {
 		"name": "杨语迟",
 		"age":  10,
 	}
-	result, err := Select(&dbName, &col, filer,0)
+	result, err := Select(&dbName, &col, filer, 0)
 	if err != nil {
 		t.Fail()
 	} else {
@@ -124,18 +124,18 @@ func TestUpdate(t *testing.T) {
 	logFile := "/Users/yeahyf/go/src/pubaws/conf/seelog.xml"
 	log.SetLogConf(&logFile)
 	address := "mongodb://yifan:123456@192.168.1.10:27017/yifants"
-	NewMongoClient(&address,10,2,10)
+	NewMongoClient(&address, 10, 2, 10)
 
 	dbName := "yifants"
 	col := "updapp"
 
 	filer := bson.M{
-		"pubid": "bjluhixe",
-		"platform":"1",
-		"status":  "1",
+		"pubid":    "bjluhixe",
+		"platform": "1",
+		"status":   "1",
 	}
 
-	update := bson.M{"$set": bson.M{"status":"0"}}
+	update := bson.M{"$set": bson.M{"status": "0"}}
 	match, up, err := Update(&dbName, &col, filer, update)
 	if err != nil {
 		t.Fail()

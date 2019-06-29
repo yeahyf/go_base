@@ -2,7 +2,7 @@ package mgo
 
 import (
 	"context"
-	"gobase/log"
+	log "gobase/zap"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -24,15 +24,15 @@ func NewMongoClient(address *string, timeout, maxsize, idletime int) error {
 		clientOptions.SetMaxConnIdleTime(time.Duration(idletime)*time.Second))
 
 	if err != nil {
-		log.L.Error(err)
+		log.Error(err)
 		return err
 	}
 	err = client.Ping(context.TODO(), readpref.Primary())
 	if err != nil {
-		log.L.Error(err)
+		log.Error(err)
 		return err
 	}
-	log.L.Debug("Connected to MongoDB!")
+	log.Debug("Connected to MongoDB!")
 	return nil
 }
 
@@ -43,10 +43,10 @@ func InsertOne(dbName, colName *string, document interface{}) (interface{}, erro
 	collection := client.Database(*dbName).Collection(*colName)
 	insertResult, err := collection.InsertOne(context.TODO(), document)
 	if err != nil {
-		log.L.Error(err)
+		log.Error(err)
 		return nil, err
 	} else {
-		log.L.Debug("Inserted a single document: ", insertResult.InsertedID)
+		log.Debug("Inserted a single document: ", insertResult.InsertedID)
 	}
 	return insertResult.InsertedID, nil
 }
@@ -56,10 +56,10 @@ func InsertMany(dbName, colName *string, documents []interface{}) ([]interface{}
 	collection := client.Database(*dbName).Collection(*colName)
 	insertManyResult, err := collection.InsertMany(context.TODO(), documents)
 	if err != nil {
-		log.L.Error(err)
+		log.Error(err)
 		return nil, err
 	}
-	log.L.Debug("Inserted multiple documents:", insertManyResult.InsertedIDs)
+	log.Debug("Inserted multiple documents:", insertManyResult.InsertedIDs)
 	return insertManyResult.InsertedIDs, err
 }
 
@@ -68,10 +68,10 @@ func Delete(dbName, colName *string, key bson.M) (int64, error) {
 	col := client.Database(*dbName).Collection(*colName)
 	deleteResult, err := col.DeleteMany(context.TODO(), key)
 	if err != nil {
-		log.L.Error(err)
+		log.Error(err)
 		return 0, err
 	}
-	log.L.Debugf("Deleted %v documents in the trainers collection\n", deleteResult.DeletedCount)
+	log.Debugf("Deleted %v documents in the trainers collection\n", deleteResult.DeletedCount)
 	return deleteResult.DeletedCount, nil
 }
 
@@ -82,10 +82,10 @@ func Update(dbName, colName *string, filter bson.M, update bson.M) (int64, int64
 	col := client.Database(*dbName).Collection(*colName)
 	updateResult, err := col.UpdateMany(context.TODO(), filter, update)
 	if err != nil {
-		log.L.Error(err)
+		log.Error(err)
 		return 0, 0, nil
 	}
-	log.L.Debugf("Matched %v documents and updated %v documents.\n", updateResult.MatchedCount, updateResult.ModifiedCount)
+	log.Debugf("Matched %v documents and updated %v documents.\n", updateResult.MatchedCount, updateResult.ModifiedCount)
 	return updateResult.MatchedCount, updateResult.ModifiedCount, nil
 }
 
@@ -101,12 +101,12 @@ func Select(dbName, colName *string, key bson.M, max int64) ([]bson.M, error) {
 	if max > 0 {
 		findOptions = options.Find()
 		findOptions.SetLimit(max)
-		cursor,err = col.Find(context.TODO(), key, findOptions)
-	}else{
-		cursor,err = col.Find(context.TODO(), key)
+		cursor, err = col.Find(context.TODO(), key, findOptions)
+	} else {
+		cursor, err = col.Find(context.TODO(), key)
 	}
 	if err != nil {
-		log.L.Error(err)
+		log.Error(err)
 		return nil, err
 	}
 	defer cursor.Close(context.TODO())
@@ -115,12 +115,12 @@ func Select(dbName, colName *string, key bson.M, max int64) ([]bson.M, error) {
 		var result bson.M
 		err := cursor.Decode(&result)
 		if err != nil {
-			log.L.Error(err)
+			log.Error(err)
 		}
 		results = append(results, result)
 	}
 	if err := cursor.Err(); err != nil {
-		log.L.Error(err)
+		log.Error(err)
 		return nil, err
 	}
 	return results, nil

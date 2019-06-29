@@ -3,7 +3,7 @@ package cfg
 import (
 	"bufio"
 	"bytes"
-	"gobase/log"
+	log "gobase/zap"
 	"io"
 	"io/ioutil"
 	"strconv"
@@ -91,7 +91,7 @@ func GetInt(key string) int {
 	s := p.Get(key)
 	value, err := strconv.Atoi(s)
 	if err != nil {
-		log.L.Error(err)
+		log.Error(err)
 		return 0
 	}
 	return value
@@ -101,7 +101,7 @@ func GetInt(key string) int {
 func GetBool(key string) bool {
 	value, err := strconv.ParseBool(p.Get(key))
 	if err != nil {
-		log.L.Error(err)
+		log.Error(err)
 		return false
 	}
 	return value
@@ -116,7 +116,7 @@ func GetIntArray(key string) []int {
 	for k, v := range array {
 		r[k], err = strconv.Atoi(v)
 		if err != nil {
-			log.L.Error("Parse Int Array Error,key = ", key, err)
+			log.Error("Parse Int Array Error,key = ", key, err)
 		}
 	}
 	return r

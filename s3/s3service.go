@@ -2,7 +2,7 @@ package s3
 
 import (
 	"bytes"
-	"gobase/log"
+	log "gobase/zap"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -26,21 +26,21 @@ func Delete(destKey *string, s3Service *s3.S3, bucket *string) error {
 		if aerr, ok := err.(awserr.Error); ok {
 			switch aerr.Code() {
 			default:
-				log.L.Error(s3.ErrCodeNoSuchKey, aerr.Error())
+				log.Error(s3.ErrCodeNoSuchKey, aerr.Error())
 			}
 		} else {
-			log.L.Error(err.Error())
+			log.Error(err.Error())
 		}
 		return err
 	}
-	//log.L.Info(result)
+	//log.Info(result)
 	return nil
 }
 
 func Upload(srcFile *string, destKey *string, s3Service *s3.S3, bucket *string, acl *string) error {
 	file, err := os.Open(*srcFile)
 	if err != nil {
-		log.L.Error(err)
+		log.Error(err)
 		return err
 	}
 	defer file.Close()
@@ -66,14 +66,14 @@ func Upload(srcFile *string, destKey *string, s3Service *s3.S3, bucket *string, 
 		if aerr, ok := err.(awserr.Error); ok {
 			switch aerr.Code() {
 			default:
-				log.L.Error(s3.ErrCodeNoSuchKey, aerr.Error())
+				log.Error(s3.ErrCodeNoSuchKey, aerr.Error())
 			}
 		} else {
-			log.L.Error(err.Error())
+			log.Error(err.Error())
 		}
 		return err
 	}
-	//log.L.Info(result)
+	//log.Info(result)
 	return nil
 }
 
@@ -88,21 +88,21 @@ func Download(srcFile *string, destPath *string, s3Service *s3.S3, bucket string
 		if aerr, ok := err.(awserr.Error); ok {
 			switch aerr.Code() {
 			case s3.ErrCodeNoSuchKey:
-				log.L.Error(s3.ErrCodeNoSuchKey, aerr.Error())
+				log.Error(s3.ErrCodeNoSuchKey, aerr.Error())
 			default:
-				log.L.Error(aerr.Error())
+				log.Error(aerr.Error())
 			}
 		} else {
-			log.L.Error(err.Error())
+			log.Error(err.Error())
 		}
 		return err
 	}
 	fileContent, err := ioutil.ReadAll(getObjectOutput.Body)
 	if err == nil {
 		ioutil.WriteFile(path.Join(*destPath, *srcFile), fileContent, os.ModePerm)
-		log.L.Info("File: " + *srcFile + " download success!")
+		log.Info("File: " + *srcFile + " download success!")
 	} else {
-		log.L.Error(err.Error())
+		log.Error(err.Error())
 	}
 	return err
 }
@@ -115,14 +115,14 @@ func GetS3ServiceAccessID(region, accessid, accesskey *string) (*s3.S3, error) {
 		Credentials: credentials.NewStaticCredentials(*accessid, *accesskey, ""),
 	})
 	if err != nil {
-		log.L.Errorf("Get AWS Session Error!")
+		log.Errorf("Get AWS Session Error!")
 		return s3Service, err
 	}
 
 	_, err = sess.Config.Credentials.Get()
 
 	if err != nil {
-		log.L.Errorf("AWS Config Credentials Error!")
+		log.Errorf("AWS Config Credentials Error!")
 		return s3Service, err
 	}
 	return s3.New(sess), nil
@@ -136,14 +136,14 @@ func GetS3ServiceProfile(region, profile *string) (*s3.S3, error) {
 		Credentials: credentials.NewSharedCredentials("", *profile),
 	})
 	if err != nil {
-		log.L.Errorf("Get AWS Session Error!")
+		log.Errorf("Get AWS Session Error!")
 		return s3Service, err
 	}
 
 	_, err = sess.Config.Credentials.Get()
 
 	if err != nil {
-		log.L.Errorf("AWS Config Credentials Error!")
+		log.Errorf("AWS Config Credentials Error!")
 		return s3Service, err
 	}
 	return s3.New(sess), nil
