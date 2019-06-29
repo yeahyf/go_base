@@ -168,30 +168,33 @@ func initLogger(logConfig *LogConfig) (logger *zap.Logger) {
 
 //Debug 输出日志
 func Debug(msg ...interface{}) {
-	debugLog.Debug(fmt.Sprint(msg))
+	info := fmt.Sprint(msg...)
+	debugLog.Debug(fmt.Sprintf("%s", info))
 }
 
 //Debugf 按照格式输出日志
 func Debugf(format string, msg ...interface{}) {
-	debugLog.Debug(fmt.Sprintf(format, msg))
+	debugLog.Debug(fmt.Sprintf(format, msg...))
 }
 
 //Info 输出日志
 func Info(msg ...interface{}) {
-	infoLog.Info(fmt.Sprint(msg))
+	info := fmt.Sprint(msg...)
+	infoLog.Info(fmt.Sprintf("%s", info))
 }
 
 //Infof 按照格式输出日志
 func Infof(format string, msg ...interface{}) {
-	infoLog.Info(fmt.Sprintf(format, msg))
+	infoLog.Info(fmt.Sprintf(format, msg...))
 }
 
 //Error 输出日志
 func Error(msg ...interface{}) {
-	errorLog.Error(fmt.Sprint(msg))
+	info := fmt.Sprint(msg...)
+	errorLog.Error(fmt.Sprintf("%s", info))
 }
 
 //Errorf 按照格式输出日志
 func Errorf(format string, msg ...interface{}) {
-	errorLog.Error(fmt.Sprintf(format, msg))
+	errorLog.Error(fmt.Sprintf(format, msg...))
 }
