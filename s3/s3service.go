@@ -157,9 +157,9 @@ func GetS3Service(region *string) (*s3.S3, error) {
 }
 
 //根据业务要求获取符合前缀要求的存放在aws s3中文件的列表
-func GetObjectsList(bucket string, prefix *string, s3Service *s3.S3) ([]*string, error) {
+func GetObjectsList(bucket *string, prefix *string, s3Service *s3.S3) ([]*string, error) {
 	input := &s3.ListObjectsInput{
-		Bucket: &bucket,
+		Bucket: bucket,
 		Prefix: prefix,
 	}
 
