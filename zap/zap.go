@@ -103,7 +103,7 @@ func initConfig(config *Config) {
 func reSetLevel() {
 	for {
 		time.Sleep(time.Second * 30)
-		Debug("start reload log configf file ...")
+		//Debug("start reload log configf file ...")
 		data, err := ioutil.ReadFile(logConfigFile)
 		if err != nil {
 			Error("Read log config file Error", err)
