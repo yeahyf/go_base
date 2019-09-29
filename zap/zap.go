@@ -159,7 +159,7 @@ func initLogger(logConfig *LogConfig) (logger *zap.Logger) {
 		logger = zap.New(core)
 	} else {
 		caller := zap.AddCaller()
-		callerSkip := zap.AddCallerSkip(0)
+		callerSkip := zap.AddCallerSkip(1) //让日志中能够打印出业务代码的行数
 		development := zap.Development()
 		logger = zap.New(core, caller, development, callerSkip)
 	}
