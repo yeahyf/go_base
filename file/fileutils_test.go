@@ -12,3 +12,14 @@ func TestCopyFile(t *testing.T) {
 		t.Fail()
 	}
 }
+
+func TestReadLine(t *testing.T) {
+	err := ReadLine("/Users/yeahyf/go/src/gobase/file/fileutils.go", print)
+	if err != nil {
+		t.Fail()
+	}
+}
+
+func print(line *string) {
+	fmt.Println(*line)
+}

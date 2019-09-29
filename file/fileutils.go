@@ -1,6 +1,8 @@
 package file
 
 import (
+	"bufio"
+	"compress/gzip"
 	"fmt"
 	"io"
 	"os"
@@ -64,4 +66,67 @@ func CopyFile(source, dest string) (int64, error) {
 
 	//进行数据拷贝
 	return io.Copy(destFile, sourceFile)
+}
+
+//逐行读取文本文件进行处理
+func ReadLine(fileName string, handler func(*string)) error {
+	f, err := os.Open(fileName)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	buffer := bufio.NewReader(f)
+
+	for {
+		line, err := buffer.ReadString('\n')
+		if err != nil {
+			if err == io.EOF {
+				return nil
+			}
+			return err
+		}
+		line = strings.TrimSpace(line)
+		handler(&line)
+	}
+	return nil
+}
+
+//压缩文件
+//原始地址，目标地址
+func Compress(srcFile, destFile *string) error {
+	//创建目标文件
+	newfile, err := os.Create(*destFile)
+	if err != nil {
+		return err
+	}
+	defer newfile.Close()
+
+	oldFile, err := os.Open(*srcFile)
+	if err != nil {
+		return err
+	}
+	defer oldFile.Close()
+
+	zw := gzip.NewWriter(newfile)
+	filestat, err := oldFile.Stat()
+	if err != nil {
+		return err
+	}
+
+	zw.Name = filestat.Name()
+	zw.ModTime = filestat.ModTime()
+	_, err = io.Copy(zw, oldFile)
+	if err != nil {
+		return err
+	}
+
+	err = zw.Flush()
+	if err != nil {
+		return err
+	}
+	if err := zw.Close(); err != nil {
+		return err
+	}
+	return nil
 }
