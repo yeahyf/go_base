@@ -3,10 +3,11 @@ package s3
 import (
 	"bytes"
 	log "gobase/zap"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path"
+
+	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
@@ -77,34 +78,34 @@ func Upload(srcFile *string, destKey *string, s3Service *s3.S3, bucket *string, 
 	return nil
 }
 
-func Download(srcFile *string, destPath *string, s3Service *s3.S3, bucket string) error {
-	getObjectInput := &s3.GetObjectInput{
-		Bucket: aws.String(bucket), //目标存储桶
-		Key:    aws.String(*srcFile),
-	}
-
-	getObjectOutput, err := s3Service.GetObject(getObjectInput)
+//使用新的接口处理下载
+func Download(srcFile *string, destPath *string, region, bucket string) error {
+	sess, err := GetNewSession("", region)
 	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
-			switch aerr.Code() {
-			case s3.ErrCodeNoSuchKey:
-				log.Error(s3.ErrCodeNoSuchKey, aerr.Error())
-			default:
-				log.Error(aerr.Error())
-			}
-		} else {
-			log.Error(err.Error())
-		}
+		log.Error("Create S3 Session Error!!!")
 		return err
 	}
-	fileContent, err := ioutil.ReadAll(getObjectOutput.Body)
-	if err == nil {
-		ioutil.WriteFile(path.Join(*destPath, *srcFile), fileContent, os.ModePerm)
-		log.Info("File: " + *srcFile + " download success!")
-	} else {
-		log.Error(err.Error())
+	downloader := s3manager.NewDownloader(sess)
+	dataFile := path.Join(*destPath, *srcFile)
+	f, err := os.Create(dataFile)
+	if err != nil {
+		log.Error("os Create error: ", err)
+		return err
 	}
-	return err
+	defer f.Close()
+
+	numBytes, err := downloader.Download(f,
+		&s3.GetObjectInput{
+			Bucket: aws.String(bucket),
+			Key:    srcFile,
+		})
+
+	if err != nil {
+		log.Errorf("Unable to download item %s, %v", dataFile, err)
+		return err
+	}
+	log.Info("File downloac finished! ", numBytes, srcFile)
+	return nil
 }
 
 func GetS3ServiceAccessID(region, accessid, accesskey *string) (*s3.S3, error) {
@@ -177,4 +178,17 @@ func GetObjectsList(bucket *string, prefix *string, s3Service *s3.S3) ([]*string
 		}
 		return result, nil
 	}
+}
+
+func GetNewSession(profile, region string) (*session.Session, error) {
+	if profile == "" {
+		profile = "default"
+	}
+	sess, err := session.NewSession(&aws.Config{
+		Credentials:      credentials.NewSharedCredentials("", profile),
+		Region:           aws.String(region),
+		DisableSSL:       aws.Bool(true),
+		S3ForcePathStyle: aws.Bool(false), //virtual-host style方式，不要修改
+	})
+	return sess, err
 }
