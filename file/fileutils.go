@@ -3,6 +3,8 @@ package file
 import (
 	"bufio"
 	"compress/gzip"
+	"crypto/sha1"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"os"
@@ -129,4 +131,20 @@ func Compress(srcFile, destFile *string) error {
 		return err
 	}
 	return nil
+}
+
+//计算文件的sha1值
+func SHA1File(filePath string) string {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return ""
+	}
+	defer file.Close()
+
+	m := sha1.New()
+	_, err = io.Copy(m, file)
+	if err != nil {
+		return ""
+	}
+	return hex.EncodeToString(m.Sum(nil))
 }

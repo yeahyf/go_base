@@ -104,7 +104,7 @@ func Download(srcFile *string, destPath *string, region, bucket string) error {
 		log.Errorf("Unable to download item %s, %v", dataFile, err)
 		return err
 	}
-	log.Info("File downloac finished! ", numBytes, srcFile)
+	log.Info("File download finished! ", numBytes, *srcFile)
 	return nil
 }
 

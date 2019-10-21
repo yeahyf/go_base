@@ -55,7 +55,7 @@ func SetLogConf(configFile *string) {
 		panic(err)
 	}
 
-	fmt.Println("Start set log config ... ")
+	//fmt.Println("Start set log config ... ")
 	logConfig := make([]LogConfig, 3)
 
 	config := Config{
