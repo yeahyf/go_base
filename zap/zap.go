@@ -50,7 +50,7 @@ type ShortConfig struct {
 //SetLogConf 将json数据读取出来并进行初始化
 func SetLogConf(configFile *string) {
 	logConfigFile = *configFile
-	data, err := ioutil.ReadFile(*configFile)
+	data, err := ioutil.ReadFile(logConfigFile)
 	if err != nil {
 		panic(err)
 	}
@@ -81,6 +81,10 @@ func SetLevel(level string) {
 	case Level_Error:
 		atom.SetLevel(zapcore.ErrorLevel)
 	}
+}
+
+func IsDebug() bool {
+	return atom.Enabled(zapcore.DebugLevel)
 }
 
 //initConfig 对日志模块进行初始化
