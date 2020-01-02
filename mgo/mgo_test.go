@@ -28,7 +28,7 @@ func TestNew(t *testing.T) {
 }
 
 func TestInsert(t *testing.T) {
-	logFile := "/Users/yeahyf/go/src/pubaws/conf/seelog.xml"
+	//logFile := "/Users/yeahyf/go/src/pubaws/conf/seelog.xml"
 	log.SetLogConf(&logFile)
 	address := "mongodb://yifan:123456@192.168.1.10:27017/yifants"
 	err := NewMongoClient(&address, 10, 2, 10)
@@ -40,7 +40,7 @@ func TestInsert(t *testing.T) {
 
 	dbName := "yifants"
 	col := "trainers"
-	document := Trainer{"杨语迟", 10, "杨林朱院村"}
+	document := Trainer{"杨", 10, "朱院村"}
 	result, err := InsertOne(&dbName, &col, document)
 	if err != nil {
 		t.Error(err)
@@ -104,7 +104,7 @@ func TestSelect(t *testing.T) {
 	col := "trainers"
 
 	filer := bson.M{
-		"name": "杨语迟",
+		"name": "杨",
 		"age":  10,
 	}
 	result, err := Select(&dbName, &col, filer, 0)
