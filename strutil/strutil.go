@@ -1,3 +1,4 @@
+///字符串工具接口封装
 package strutil
 
 import "unsafe"

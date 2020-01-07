@@ -1,9 +1,10 @@
+///提供基本的配置管理接口
 package cfg
 
 import (
 	"bufio"
 	"bytes"
-	log "gobase/zap"
+	"gobase/log"
 	"io"
 	"io/ioutil"
 	"strconv"

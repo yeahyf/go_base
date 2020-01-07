@@ -1,4 +1,5 @@
-package zap
+///zap日志封装
+package log
 
 //格式化为debug,info,error三种日志信息
 //并做了部分固定的设定处理

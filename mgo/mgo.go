@@ -1,8 +1,9 @@
+///mongodb管理接口封装
 package mgo
 
 import (
 	"context"
-	log "gobase/zap"
+	"gobase/log"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"

@@ -1,3 +1,4 @@
+/// 提供Reids的基本管理接口
 package cache
 
 import (

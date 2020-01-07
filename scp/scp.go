@@ -1,8 +1,9 @@
+///scp接口封装
 package scp
 
 import (
 	"fmt"
-	log "gobase/zap"
+	"gobase/log"
 	"io"
 	"io/ioutil"
 	"net"

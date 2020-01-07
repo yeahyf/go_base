@@ -1,3 +1,4 @@
+///mysql数据库接口封装
 package rds
 
 import (

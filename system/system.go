@@ -1,3 +1,4 @@
+///系统相关接口封装
 package system
 
 import (
