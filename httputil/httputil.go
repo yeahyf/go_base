@@ -37,17 +37,31 @@ const (
 )
 
 ///组合处理
-func HttpHandle(w *http.ResponseWriter, r *http.Request) []byte {
-	postData, err := ReqPreHandle(r, nil)
+func HttpReqHandle(w *http.ResponseWriter, r *http.Request, cache *cache.RedisPool, pb proto.Message) bool {
+	postData, err := ReqHeadHandle(r, cache)
 	if err != nil {
 		ExRespHandle(w, err)
-		return nil
+		return false
 	}
-	return postData
+	err = proto.Unmarshal(postData, pb)
+	if err != nil {
+		log.Errorf("Proto Unmarshal Exception!!!", err)
+		aErr := &ept.Error{
+			Code:    immut.Code_Ex_ProtobufUn,
+			Message: "AtAdLoginRequest Unmarshal Error!!!",
+		}
+		ExRespHandle(w, aErr)
+		return false
+	}
+	if log.IsDebug() {
+		log.Debugf("req = %s", pb)
+	}
+	return true
 }
 
 //像客户端输出错误信息
 func ExRespHandle(w *http.ResponseWriter, err error) {
+	log.Error("Code="+strconv.Itoa(int(err.(*ept.Error).Code)), ", Info="+err.(*ept.Error).Message)
 	(*w).Header().Add(Head_Server_Ex, "1")
 	resp := &ept.ErrorResponse{
 		Code: err.(*ept.Error).Code,
@@ -58,7 +72,7 @@ func ExRespHandle(w *http.ResponseWriter, err error) {
 }
 
 ///对http请求进行通用处理
-func ReqPreHandle(r *http.Request, cache *cache.RedisPool) ([]byte, error) {
+func ReqHeadHandle(r *http.Request, cache *cache.RedisPool) ([]byte, error) {
 	// 对请求方法做判断
 	if r.Method != Http_Post {
 		return nil, &ept.Error{
@@ -207,4 +221,21 @@ func ReqPreHandle(r *http.Request, cache *cache.RedisPool) ([]byte, error) {
 		}
 	}
 	return postData, nil
+}
+
+func HttpRespHandle(w *http.ResponseWriter, pb proto.Message) {
+	if log.IsDebug() {
+		log.Debugf("Resp = %s", pb)
+	}
+
+	result, err := proto.Marshal(pb)
+	if err != nil {
+		aErr := &ept.Error{
+			Code:    immut.Code_Ex_ProtobufMa,
+			Message: "Protobuf Ma Failed!!!",
+		}
+		ExRespHandle(w, aErr)
+		return
+	}
+	(*w).Write(result)
 }

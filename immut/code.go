@@ -2,8 +2,6 @@
 package immut
 
 const (
-	Code_Success uint32 = 0 //成功,无异常
-
 	//数据格式错误 1000-1999
 	Code_Ex_HttpMethod uint32 = 1000 //http请求方法错误
 	Code_Ex_Version    uint32 = 1001 //版本号错误
@@ -13,12 +11,15 @@ const (
 	Code_Ex_Repeat_Req uint32 = 1005 //随机数重复
 
 	Code_Ex_ProtobufUn uint32 = 1006 //请求参数
+	Code_Ex_ProtobufMa uint32 = 1007 //请求参数
 
 	Code_Ex_DdbMa uint32 = 1100 //Ddb序列化错误
 	Code_Ex_DdbUn uint32 = 1101 //Ddb反序列化错误
 
+	/// 业务错误 2000-2999 用户系统
 	/// 业务错误 3000-3999 存档系统
 	/// 业务错误 4000-4999 排行榜系统
+	/// 业务错误 5000-5999 防沉迷系统
 
 	///服务器内部错误 9000-9999
 	Code_Ex_Redis  uint32 = 9000 //Redis交互异常
