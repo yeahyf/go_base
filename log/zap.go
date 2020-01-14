@@ -25,6 +25,7 @@ const (
 	Level_Debug = "debug"
 	Level_Info  = "info"
 	Level_Error = "error"
+	Level_Warn  = "warn"
 )
 
 //LogConfig 日志配置结构体
@@ -81,6 +82,8 @@ func SetLevel(level string) {
 		atom.SetLevel(zapcore.InfoLevel)
 	case Level_Error:
 		atom.SetLevel(zapcore.ErrorLevel)
+	case Level_Warn:
+		atom.SetLevel(zapcore.WarnLevel)
 	}
 }
 
