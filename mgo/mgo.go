@@ -110,14 +110,10 @@ func (c *MongoDBClient) Update(colName *string, filter bson.M, update bson.M) (i
 }
 
 //根据条件只查询一条
-func (c *MongoDBClient) SelectOne(colName *string, filter bson.M, v interface{}) (interface{}, error) {
+func (c *MongoDBClient) SelectOne(colName *string, filter bson.M, v interface{}) error {
 	col := c.Database(*c.dbName).Collection(*colName)
 	selectResult := col.FindOne(context.TODO(), filter)
-
-	if err := selectResult.Decode(v); err != nil {
-		return nil, err
-	}
-	return v, nil
+	return selectResult.Decode(v)
 }
 
 //根据条件查询

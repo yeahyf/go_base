@@ -15,17 +15,6 @@ const (
 
 	action_Expire = "EXPIRE"
 	action_SetEx  = "SETEX"
-
-	action_Zadd      = "ZADD"
-	action_Zcard     = "ZCARD"
-	action_Zcount    = "ZCOUNT"
-	action_Zrevrange = "ZREVRANGE"
-	action_Zrevrank  = "ZREVRANK"
-
-	action_Zrank  = "ZRANK"
-	action_Zrange = "ZRANGE"
-
-	action_WithScores = "WITHSCORES"
 )
 
 type RedisPool struct {
@@ -42,9 +31,21 @@ func NewRedisPool(init, maxsize, idle int, address, passwd string) *RedisPool {
 		IdleTimeout: time.Second * time.Duration(idle), //连接关闭时间 300秒 （300秒不使用自动关闭）
 		Dial: func() (redis.Conn, error) { //要连接的redis数据库
 			if passwd == immut.Blank_String {
-				return redis.Dial("tcp", address)
+				c, err := redis.Dial("tcp", address)
+				if err != nil {
+					fmt.Println("Create Connection Error!")
+					return nil, err
+				} else {
+					return c, nil
+				}
 			} else {
-				return redis.Dial("tcp", address, redis.DialPassword(passwd))
+				c, err := redis.Dial("tcp", address, redis.DialPassword(passwd))
+				if err != nil {
+					fmt.Println("Create Connection Error!")
+					return nil, err
+				} else {
+					return c, nil
+				}
 			}
 		},
 	}
@@ -90,63 +91,6 @@ func (p *RedisPool) SetExpire(key *string, expire int) error {
 
 	_, err := c.Do(action_Expire, *key, expire)
 	return err
-}
-
-///向有序集合增加元素或修改元素
-///注意：当不存在某个有序集合的时候直接使用zadd会创建这个有序集合
-func (p *RedisPool) ZAdd(key, member *string, value float32) error {
-	c := p.Get()
-	defer c.Close() //函数运行结束 ，把连接放回连接池
-
-	_, err := c.Do(action_Zadd, *key, value, *member)
-	return err
-}
-
-///获取有序集合总成员数
-func (p *RedisPool) Zcard(key *string) (int, error) {
-	c := p.Get()
-	defer c.Close() //函数运行结束 ，把连接放回连接池
-
-	return redis.Int(c.Do(action_Zcard, *key))
-}
-
-///计算指定区间分数成员
-func (p *RedisPool) Zcount(key *string, min, max float32) (int, error) {
-	c := p.Get()
-	defer c.Close() //函数运行结束 ，把连接放回连接池
-
-	return redis.Int(c.Do(action_Zcount, *key, min, max))
-}
-
-///按照分数从高到低获取成员信息
-func (p *RedisPool) Zrevrange(key *string, start, stop int) ([]string, error) {
-	c := p.Get()
-	defer c.Close() //函数运行结束 ，把连接放回连接池
-
-	return redis.Strings(c.Do(action_Zrevrange, *key, start, stop, action_WithScores))
-}
-
-///按照分数从低到高获取成员信息
-func (p *RedisPool) Zrange(key *string, start, stop int) ([]string, error) {
-	c := p.Get()
-	defer c.Close() //函数运行结束 ，把连接放回连接池
-
-	return redis.Strings(c.Do(action_Zrange, *key, start, stop, action_WithScores))
-}
-
-///按照分数从高低获取用户的排名信息
-func (p *RedisPool) Zrevrank(key, member *string) (int, error) {
-	c := p.Get()
-	defer c.Close() //函数运行结束 ，把连接放回连接池
-
-	return redis.Int(c.Do(action_Zrevrank, *key, *member))
-}
-
-func (p *RedisPool) Zrank(key, member *string) (int, error) {
-	c := p.Get()
-	defer c.Close() //函数运行结束 ，把连接放回连接池
-
-	return redis.Int(c.Do(action_Zrank, *key, *member))
 }
 
 //方便连接池在系统退出的时候也能够优雅的退出
