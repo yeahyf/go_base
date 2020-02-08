@@ -3,13 +3,14 @@ package scp
 
 import (
 	"fmt"
-	"gobase/log"
 	"io"
 	"io/ioutil"
 	"net"
 	"os"
 	"path"
 	"time"
+
+	"github.com/yeahyf/go_base/log"
 
 	"github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"

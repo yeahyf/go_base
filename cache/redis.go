@@ -3,10 +3,10 @@ package cache
 
 import (
 	"fmt"
-	"gobase/immut"
 	"time"
 
 	"github.com/gomodule/redigo/redis"
+	"github.com/yeahyf/go_base/immut"
 )
 
 const (

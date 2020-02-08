@@ -4,18 +4,19 @@ package httputil
 import (
 	"crypto/sha1"
 	"fmt"
-	"gobase/cache"
-	"gobase/crypto"
-	"gobase/ept"
-	"gobase/immut"
-	"gobase/log"
-	"gobase/strutil"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/yeahyf/go_base/cache"
+	"github.com/yeahyf/go_base/crypto"
+	"github.com/yeahyf/go_base/ept"
+	"github.com/yeahyf/go_base/immut"
+	"github.com/yeahyf/go_base/log"
+	"github.com/yeahyf/go_base/strutil"
 
 	"github.com/gogo/protobuf/proto"
 )

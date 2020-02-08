@@ -3,8 +3,9 @@ package mgo
 
 import (
 	"context"
-	"gobase/log"
 	"time"
+
+	"github.com/yeahyf/go_base/log"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"

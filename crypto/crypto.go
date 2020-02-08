@@ -4,7 +4,8 @@ package crypto
 import (
 	"crypto/md5"
 	"encoding/hex"
-	"gobase/strutil"
+
+	"github.com/yeahyf/go_base/strutil"
 )
 
 // // AES for CBC

@@ -3,10 +3,11 @@ package s3
 
 import (
 	"bytes"
-	log "gobase/zap"
 	"net/http"
 	"os"
 	"path"
+
+	"github.com/yeahyf/go_base/log"
 
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 
