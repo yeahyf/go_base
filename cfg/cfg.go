@@ -4,11 +4,12 @@ package cfg
 import (
 	"bufio"
 	"bytes"
-	"gobase/log"
 	"io"
 	"io/ioutil"
 	"strconv"
 	"strings"
+
+	"github.com/yeahyf/go_base/log"
 )
 
 var p *Properties
