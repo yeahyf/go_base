@@ -2,6 +2,8 @@
 package httputil
 
 import (
+	"bytes"
+	"compress/gzip"
 	"crypto/sha1"
 	"fmt"
 	"io"
@@ -29,8 +31,8 @@ const (
 	Head_X_Signature = "X-Signature"
 	Head_IP          = "X-Real-IP"
 	Http_Post        = "POST"
-
-	Head_Server_Ex = "X-Server-Ex"
+	Head_Server_Ex   = "X-Server-Ex"
+	CompFmt_Gzip     = "gzip"
 
 	CT_Protobuf     = "application/x-protobuf"
 	CT_Json         = "application/json"
@@ -77,8 +79,8 @@ func ReqHeadHandle(r *http.Request, cache *cache.RedisPool) ([]byte, error) {
 	// 对请求方法做判断
 	if r.Method != Http_Post {
 		return nil, &ept.Error{
-			Code:    immut.Code_Ex_Version,
-			Message: "Req Head Version Error!!!",
+			Code:    immut.Code_Ex_HttpMethod,
+			Message: "Req Method Error!!!",
 		}
 	}
 
@@ -114,6 +116,9 @@ func ReqHeadHandle(r *http.Request, cache *cache.RedisPool) ([]byte, error) {
 			Message: "Req Head Signature Error!!!",
 		}
 	}
+
+	compFmt := r.Header.Get(Head_ContentType)
+
 	//====================================
 
 	//从nginx转发过来的ip地址
@@ -131,9 +136,11 @@ func ReqHeadHandle(r *http.Request, cache *cache.RedisPool) ([]byte, error) {
 		log.Debug("ts=", timestamp)
 		log.Debug("sn=", signature)
 		log.Debug("ip=", addr)
+		log.Debug("comFmt=", compFmt)
 	}
 
 	defer r.Body.Close()
+
 	postData, err := ioutil.ReadAll(r.Body) //获取post的数据
 
 	if err != nil {
@@ -221,6 +228,35 @@ func ReqHeadHandle(r *http.Request, cache *cache.RedisPool) ([]byte, error) {
 			cache.SetValue(&nonce, &value, 5*60) //180秒
 		}
 	}
+
+	//如果压缩格式为gzip
+	if compFmt == CompFmt_Gzip {
+		//bytes.Buffer 的指针对象实现了io.Reader接口
+		var b bytes.Buffer
+		_, err = b.Write(postData)
+		if err != nil {
+			return nil, &ept.Error{
+				Code:    immut.Code_Ex_ReadIO,
+				Message: "Read Post Data Error!!!",
+			}
+		}
+		gzipReader, err := gzip.NewReader(&b)
+		if err != nil {
+			return nil, &ept.Error{
+				Code:    immut.Code_Ex_ReadIO,
+				Message: "Read Post Data Error!!!",
+			}
+		}
+		defer gzipReader.Close()
+		postData, err = ioutil.ReadAll(gzipReader)
+		if err != nil {
+			return nil, &ept.Error{
+				Code:    immut.Code_Ex_ReadIO,
+				Message: "Read Post Data Error!!!",
+			}
+		}
+	}
+
 	return postData, nil
 }
 
