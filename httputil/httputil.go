@@ -24,15 +24,16 @@ import (
 )
 
 const (
-	Head_ContentType = "Content-Type"
-	Head_X_Vesion    = "X-Version"
-	Head_X_Nonce     = "X-Nonce"
-	Head_X_Timestamp = "X-Timestamp"
-	Head_X_Signature = "X-Signature"
-	Head_IP          = "X-Real-IP"
-	Http_Post        = "POST"
-	Head_Server_Ex   = "X-Server-Ex"
-	CompFmt_Gzip     = "gzip"
+	Head_ContentType     = "Content-Type"
+	Head_ContentEncoding = "Content-Encoding"
+	Head_X_Vesion        = "X-Version"
+	Head_X_Nonce         = "X-Nonce"
+	Head_X_Timestamp     = "X-Timestamp"
+	Head_X_Signature     = "X-Signature"
+	Head_IP              = "X-Real-IP"
+	Http_Post            = "POST"
+	Head_Server_Ex       = "X-Server-Ex"
+	CompFmt_Gzip         = "gzip"
 
 	CT_Protobuf     = "application/x-protobuf"
 	CT_Json         = "application/json"
@@ -117,7 +118,7 @@ func ReqHeadHandle(r *http.Request, cache *cache.RedisPool) ([]byte, error) {
 		}
 	}
 
-	compFmt := r.Header.Get(Head_ContentType)
+	compFmt := r.Header.Get(Head_ContentEncoding)
 
 	//====================================
 
@@ -142,7 +143,6 @@ func ReqHeadHandle(r *http.Request, cache *cache.RedisPool) ([]byte, error) {
 	defer r.Body.Close()
 
 	postData, err := ioutil.ReadAll(r.Body) //获取post的数据
-
 	if err != nil {
 		return nil, &ept.Error{
 			Code:    immut.Code_Ex_ReadIO,
@@ -231,6 +231,9 @@ func ReqHeadHandle(r *http.Request, cache *cache.RedisPool) ([]byte, error) {
 
 	//如果压缩格式为gzip
 	if compFmt == CompFmt_Gzip {
+		if log.IsDebug() {
+			log.Debug("Start gunzip handle ... ")
+		}
 		//bytes.Buffer 的指针对象实现了io.Reader接口
 		var b bytes.Buffer
 		_, err = b.Write(postData)
