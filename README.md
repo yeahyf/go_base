@@ -5,3 +5,9 @@
 * 文件操作
 * mongodb接口
 * aws s3操作接口
+* 字符串处理
+* rds
+* cache/redis
+* scp
+* crypto
+* 异常错误
