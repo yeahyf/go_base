@@ -22,14 +22,14 @@ var atom zap.AtomicLevel
 var logConfigFile string
 
 const (
-	Level_Debug = "debug"
-	Level_Info  = "info"
-	Level_Error = "error"
-	Level_Warn  = "warn"
+	LevelDebug = "debug"
+	LevelInfo  = "info"
+	LevelError = "error"
+	LevelWarn  = "warn"
 )
 
-//LogConfig 日志配置结构体
-type LogConfig struct {
+//LevelConfig 日志配置结构体
+type LevelConfig struct {
 	Filename   string `json:"logpath"`
 	MaxSIze    int    `json:"maxsize"`
 	MaxBackups int    `json:"backups"`
@@ -40,8 +40,8 @@ type LogConfig struct {
 
 //Config 完整配置
 type Config struct {
-	Logs  []LogConfig `json:"logs"`
-	Level string      `json:"level"`
+	Logs  []LevelConfig `json:"logs"`
+	Level string        `json:"level"`
 }
 
 //ShortConfig 级别配置
@@ -58,7 +58,7 @@ func SetLogConf(configFile *string) {
 	}
 
 	//fmt.Println("Start set log config ... ")
-	logConfig := make([]LogConfig, 3)
+	logConfig := make([]LevelConfig, 3)
 
 	config := Config{
 		Logs: logConfig,
@@ -76,13 +76,13 @@ func SetLogConf(configFile *string) {
 //SetLevel 动态修改系统的日志级别
 func SetLevel(level string) {
 	switch level {
-	case Level_Debug:
+	case LevelDebug:
 		atom.SetLevel(zapcore.DebugLevel)
-	case Level_Info:
+	case LevelInfo:
 		atom.SetLevel(zapcore.InfoLevel)
-	case Level_Error:
+	case LevelError:
 		atom.SetLevel(zapcore.ErrorLevel)
-	case Level_Warn:
+	case LevelWarn:
 		atom.SetLevel(zapcore.WarnLevel)
 	}
 }
@@ -96,11 +96,11 @@ func initConfig(config *Config) {
 	SetLevel(config.Level)
 	for _, logConfig := range config.Logs {
 		switch logConfig.Name {
-		case Level_Debug:
+		case LevelDebug:
 			debugLog = initLogger(&logConfig)
-		case Level_Info:
+		case LevelInfo:
 			infoLog = initLogger(&logConfig)
-		case Level_Error:
+		case LevelError:
 			errorLog = initLogger(&logConfig)
 		}
 	}
@@ -129,7 +129,7 @@ func reSetLevel() {
 }
 
 //initLogger 初始化具体的日志对象
-func initLogger(logConfig *LogConfig) (logger *zap.Logger) {
+func initLogger(logConfig *LevelConfig) (logger *zap.Logger) {
 	hook := lumberjack.Logger{
 		Filename:   logConfig.Filename,   // 日志文件路径
 		MaxSize:    logConfig.MaxSIze,    // megabytes  M
@@ -163,7 +163,7 @@ func initLogger(logConfig *LogConfig) (logger *zap.Logger) {
 		atom,
 	)
 
-	if logConfig.Name == Level_Info {
+	if logConfig.Name == LevelInfo {
 		logger = zap.New(core)
 	} else {
 		caller := zap.AddCaller()

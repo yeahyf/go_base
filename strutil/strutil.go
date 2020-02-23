@@ -1,7 +1,10 @@
 ///字符串工具接口封装
 package strutil
 
-import "unsafe"
+import (
+	"sort"
+	"unsafe"
+)
 
 ///处理字符串与[]byte数组的转换
 
@@ -29,38 +32,18 @@ func String2bytes(s *string) []byte {
 	return *(*[]byte)(unsafe.Pointer(&h))
 }
 
-func SortString(list []*string) {
-	length := len(list)
-	for i := 0; i < length; i++ {
-		for j := i + 1; j < length; j++ {
-			if CompareString(list[i], list[j]) {
-				temp := list[i]
-				list[i] = list[j]
-				list[j] = temp
-			}
-		}
-	}
+//func SortString(list []*string) {
+//	length := len(list)
+//	for i := 0; i < length; i++ {
+//		for j := i + 1; j < length; j++ {
+//			if  strings.Compare (*list[i], *list[j]) >0 {
+//				list[i],list[j] = list[j],list[i]
+//			}
+//		}
+//	}
+//}
+
+func SortString(list []string){
+	sort.Sort(sort.StringSlice(list))
 }
 
-// 返回true str1>=str2, 返回false str1<str2
-func CompareString(str1, str2 *string) bool {
-	len1 := len(*str1)
-	len2 := len(*str2)
-	length := len1
-	if len1 > len2 {
-		length = len2
-	}
-	for i := 0; i < length; i++ {
-		if (*str1)[i] > (*str2)[i] {
-			return true
-		}
-		if (*str1)[i] < (*str2)[i] {
-			return false
-		}
-	}
-	if len1 >= len2 {
-		return true
-	} else {
-		return false
-	}
-}

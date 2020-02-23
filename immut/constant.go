@@ -1,5 +1,5 @@
 package immut
 
 const (
-	Blank_String = "" //空字符串
+	BlankString = "" //空字符串
 )
