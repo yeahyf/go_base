@@ -17,6 +17,7 @@ type Wrapper func(w http.ResponseWriter, r *http.Request) (proto.Message, error)
 
 func Handler(httpWrapper Wrapper) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
+		defer ept.PanicHandle()
 		if pb, err := httpWrapper(w, r); err != nil {
 			ExRespHandler(w, err)
 		} else if pb != nil {

@@ -2,6 +2,7 @@
 package ept
 
 import (
+	"fmt"
 	"runtime/debug"
 )
 
@@ -32,10 +33,12 @@ func (err *Error) Error() string {
 
 func PanicHandle() {
 	if r := recover(); r != nil {
-		//var ok bool
-		_, ok := r.(error)
+		//判断是否是某种类型的错误
+		err, ok := r.(error)
 		if !ok {
 			debug.PrintStack()
+		} else {
+			fmt.Println(err)
 		}
 	}
 }
