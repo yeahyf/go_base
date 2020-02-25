@@ -138,6 +138,7 @@ func ReqHeadHandle(r *http.Request, cache *cache.RedisPool) ([]byte, error) {
 		log.Debug("sn=", signature)
 		log.Debug("ip=", addr)
 		log.Debug("comFmt=", compFmt)
+		log.Debug("UserAgent=", r.Header.Get(HeadUserAgent))
 	}
 
 	defer r.Body.Close()
@@ -240,22 +241,24 @@ func ReqHeadHandle(r *http.Request, cache *cache.RedisPool) ([]byte, error) {
 		if err != nil {
 			return nil, &ept.Error{
 				Code:    immut.CodeExReadIO,
-				Message: "Read Post Data Error!!!",
+				Message: "Read Post Data to Buffer Error!!!" + err.Error(),
 			}
 		}
+
 		gzipReader, err := gzip.NewReader(&b)
 		if err != nil {
 			return nil, &ept.Error{
 				Code:    immut.CodeExReadIO,
-				Message: "Read Post Data Error!!!",
+				Message: "Create Gzip Reader Error!!!" + err.Error(),
 			}
 		}
 		defer gzipReader.Close()
+
 		postData, err = ioutil.ReadAll(gzipReader)
 		if err != nil {
 			return nil, &ept.Error{
 				Code:    immut.CodeExReadIO,
-				Message: "Read Post Data Error!!!",
+				Message: "Read All Data from Gzip Error!!!" + err.Error(),
 			}
 		}
 	}
