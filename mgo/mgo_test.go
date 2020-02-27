@@ -2,10 +2,10 @@ package mgo
 
 import (
 	"fmt"
-	"gobase/log"
 	"testing"
 	"time"
 
+	"github.com/yeahyf/go_base/log"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
