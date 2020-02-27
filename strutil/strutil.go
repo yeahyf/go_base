@@ -8,7 +8,6 @@ import (
 	"unsafe"
 
 	"github.com/yeahyf/go_base/log"
-	"github.com/yeahyf/go_base/strutil"
 )
 
 ///处理字符串与[]byte数组的转换
@@ -55,7 +54,7 @@ func IsBase64String(str *string) bool {
 		length = 20
 	}
 
-	b := strutil.String2bytes(str)
+	b := String2bytes(str)
 	for i := 0; i < length-2; i++ {
 		v := b[i]
 		if v >= 'a' && v <= 'z' || v >= 'A' && v <= 'Z' || v >= '0' && v <= '9' ||
@@ -70,14 +69,14 @@ func IsBase64String(str *string) bool {
 
 func ConvertBytes(src *string) []byte {
 	if !IsBase64String(src) {
-		return strutil.String2bytes(src)
+		return String2bytes(src)
 	}
 	r, err := base64.StdEncoding.DecodeString(*src)
 	//判断是否是gzip压缩之后的数据
-	if err == nil && len(r) >= 2 && b[0] == 0x1f && b[1] == 0x8b {
+	if err == nil && len(r) >= 2 && r[0] == 0x1f && r[1] == 0x8b {
 		return r
 	}
-	return strutil.String2bytes(src)
+	return String2bytes(src)
 }
 
 func ConvertString(b []byte) string {
