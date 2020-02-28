@@ -79,9 +79,14 @@ func ConvertBytes(src *string) []byte {
 	return String2bytes(src)
 }
 
-func ConvertString(b []byte) string {
+func ConvertString(b []byte) *string {
 	if log.IsDebug() {
 		log.Debug("UTF8 is ", utf8.Valid(b))
+	}
+
+	//太短的情况下直接返回字符串，不可能是gzip压缩
+	if len(b) < 2 {
+		return Bytes2Str(b)
 	}
 
 	//gzip压缩进行处理
@@ -90,8 +95,8 @@ func ConvertString(b []byte) string {
 		if log.IsDebug() {
 			log.Debugf("base64 length is %d", len(result))
 		}
-		return result
+		return &result
 	} else {
-		return string(b)
+		return Bytes2Str(b)
 	}
 }
