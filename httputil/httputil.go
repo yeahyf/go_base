@@ -151,6 +151,14 @@ func ReqHeadHandle(r *http.Request, cache *cache.RedisPool) ([]byte, error) {
 		}
 	}
 
+	if log.IsDebug() {
+		if len(postData) > 100 {
+			log.Debug("source postData:", postData[:100], " ... ")
+		} else {
+			log.Debug("source postData:", postData[:100])
+		}
+	}
+
 	postDataMD5 := crypto.MD54Bytes(postData)
 
 	l := make([]string, 0, 3)
