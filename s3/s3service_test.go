@@ -1,10 +1,8 @@
 package s3
 
-import (
-	//"fmt"
-	"testing"
-	//"github.com/aws/aws-sdk-go/service/s3"
-)
+//"fmt"
+
+//"github.com/aws/aws-sdk-go/service/s3"
 
 // func TestUpload(t *testing.T) {
 // 	s3Service, err := GetS3Service("us-east-2")
@@ -58,26 +56,26 @@ import (
 
 // }
 
-func TestDownload(t *testing.T) {
-	region := "eu-central-1"
-	// s3Service, err := GetS3Service(&region)
-	// if err != nil {
-	// 	fmt.Println("=====")
-	// 	t.Fail()
-	// 	return
-	// }
+// func TestDownload(t *testing.T) {
+// 	region := "eu-central-1"
+// 	// s3Service, err := GetS3Service(&region)
+// 	// if err != nil {
+// 	// 	fmt.Println("=====")
+// 	// 	t.Fail()
+// 	// 	return
+// 	// }
 
-	bucket := "adjust-magic-seven"
+// 	bucket := "adjust-magic-seven"
 
-	srcFile := "1rb0v8fzbxs0_2019-10-08T050000_d6ecdd3fbcfaff677deb68ecda4e7379_2853a9.csv.gz"
-	destPath := "/Users/yeahyf/go/"
+// 	srcFile := "1rb0v8fzbxs0_2019-10-08T050000_d6ecdd3fbcfaff677deb68ecda4e7379_2853a9.csv.gz"
+// 	destPath := "/Users/yeahyf/go/"
 
-	err := Download(&srcFile, &destPath, region, bucket)
+// 	err := Download(&srcFile, &destPath, region, bucket)
 
-	if err != nil {
-		t.Fail()
-	} else {
-		t.Log("ok")
-	}
+// 	if err != nil {
+// 		t.Fail()
+// 	} else {
+// 		t.Log("ok")
+// 	}
 
-}
+// }

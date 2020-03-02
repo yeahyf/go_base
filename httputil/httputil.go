@@ -33,7 +33,7 @@ const (
 	HeadIp              = "X-Real-IP"
 	HttpPost            = "POST"
 	HeadServerEx        = "X-Server-Ex"
-	CompFmtGzip         = "gzip"
+	EncodingType        = "gzip"
 
 	CtProtobuf    = "application/x-protobuf"
 	CtJson        = "application/json"
@@ -118,48 +118,39 @@ func ReqHeadHandle(r *http.Request, cache *cache.RedisPool) ([]byte, error) {
 		}
 	}
 
-	compFmt := r.Header.Get(HeadContentEncoding)
-
-	//====================================
-
-	//从nginx转发过来的ip地址
-	addr := r.Header.Get(HeadIp)
-	if addr == "" {
-		//部分情况下是直接请求
-		if r.RemoteAddr != "" {
-			addr = strings.Split(r.RemoteAddr, ":")[0]
-		}
-	}
+	encoding := r.Header.Get(HeadContentEncoding)
 
 	if log.IsDebug() {
-		log.Debug("ver=", version)
-		log.Debug("nonce=", nonce)
+		//从nginx转发过来的ip地址
+		addr := r.Header.Get(HeadIp)
+		if addr == "" {
+			//部分情况下是直接请求
+			if r.RemoteAddr != "" {
+				addr = strings.Split(r.RemoteAddr, ":")[0]
+			}
+		}
+		//log.Debug("ver=", version)
+		//log.Debug("nonce=", nonce)
 		log.Debug("ts=", timestamp)
 		log.Debug("sn=", signature)
 		log.Debug("ip=", addr)
-		log.Debug("comFmt=", compFmt)
+		log.Debug("encoding=", encoding)
 		log.Debug("UserAgent=", r.Header.Get(HeadUserAgent))
+		log.Debug("ContentLength=", r.ContentLength)
 	}
 
-	defer r.Body.Close()
+	//获取post的数据
+	buffer := getPostData(r)
+	//postData, err := ioutil.ReadAll(r.Body)
 
-	postData, err := ioutil.ReadAll(r.Body) //获取post的数据
-	if err != nil {
-		return nil, &ept.Error{
-			Code:    immut.CodeExReadIO,
-			Message: "Read Post Data Error!!!",
-		}
-	}
+	// if err != nil {
+	// 	return nil, &ept.Error{
+	// 		Code:    immut.CodeExReadIO,
+	// 		Message: "Read Post Data Error!!!",
+	// 	}
+	// }
 
-	if log.IsDebug() {
-		if len(postData) > 100 {
-			log.Debug("source postData:", postData[:100], " ... ")
-		} else {
-			log.Debug("source postData:", postData[:100])
-		}
-	}
-
-	postDataMD5 := crypto.MD54Bytes(postData)
+	postDataMD5 := crypto.MD54Bytes(buffer.Bytes())
 
 	l := make([]string, 0, 3)
 	l = append(l, *postDataMD5)
@@ -238,40 +229,52 @@ func ReqHeadHandle(r *http.Request, cache *cache.RedisPool) ([]byte, error) {
 		}
 	}
 
+	if encoding != EncodingType {
+		return buffer.Bytes(), nil
+	}
+
 	//如果压缩格式为gzip
-	if compFmt == CompFmtGzip {
-		if log.IsDebug() {
-			log.Debug("Start gunzip handle ... ")
-		}
-		//bytes.Buffer 的指针对象实现了io.Reader接口
-		var b bytes.Buffer
-		_, err = b.Write(postData)
-		if err != nil {
-			return nil, &ept.Error{
-				Code:    immut.CodeExReadIO,
-				Message: "Read Post Data to Buffer Error!!!" + err.Error(),
-			}
-		}
+	if log.IsDebug() {
+		log.Debug("Start gunzip ... ")
+	}
+	//bytes.Buffer 的指针对象实现了io.Reader接口
+	// var b bytes.Buffer
+	// _, err = b.Write(postData)
+	// if err != nil {
+	// 	return nil, &ept.Error{
+	// 		Code:    immut.CodeExReadIO,
+	// 		Message: "Read Post Data to Buffer Error!!!" + err.Error(),
+	// 	}
+	// }
 
-		gzipReader, err := gzip.NewReader(&b)
-		if err != nil {
-			return nil, &ept.Error{
-				Code:    immut.CodeExReadIO,
-				Message: "Create Gzip Reader Error!!!" + err.Error(),
-			}
+	gzipReader, err := gzip.NewReader(buffer)
+	if err != nil {
+		return nil, &ept.Error{
+			Code:    immut.CodeExReadIO,
+			Message: "Gunzip Error!!!" + err.Error(),
 		}
-		defer gzipReader.Close()
+	}
+	defer gzipReader.Close()
 
-		postData, err = ioutil.ReadAll(gzipReader)
-		if err != nil {
-			return nil, &ept.Error{
-				Code:    immut.CodeExReadIO,
-				Message: "Read All Data from Gzip Error!!!" + err.Error(),
-			}
+	postData, err := ioutil.ReadAll(gzipReader)
+	if err != nil {
+		return nil, &ept.Error{
+			Code:    immut.CodeExReadIO,
+			Message: "Read Gzip Error!!!" + err.Error(),
 		}
 	}
 
 	return postData, nil
+}
+
+func getPostData(r *http.Request) *bytes.Buffer {
+	//拿到数据就关闭掉
+	defer r.Body.Close()
+	length := r.ContentLength
+	var b bytes.Buffer
+	b.Grow(int(length))
+	io.Copy(&b, r.Body)
+	return &b
 }
 
 func HttpRespHandle(w *http.ResponseWriter, pb proto.Message) {
