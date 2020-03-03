@@ -33,4 +33,5 @@ const (
 	CodeExDdbPutItem    uint32 = 9009 //DDB插入数据错误
 	CodeExDDBGetItem    uint32 = 9010 //DDB读取数据错误
 	CodeExDdbUpdateItem uint32 = 9011 //DDB更新数据错误
+	CodeExS3Donwload    uint32 = 9012 //DDB更新数据错误
 )
