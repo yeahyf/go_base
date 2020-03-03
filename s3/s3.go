@@ -3,8 +3,6 @@ package s3
 import (
 	"bytes"
 
-	"github.com/yeahyf/go_base/strutil"
-
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -14,10 +12,8 @@ import (
 )
 
 type BigStorageItem struct {
-	UID      string
-	BundleID string
-	Key      string
-	Value    []byte
+	Key   *string
+	Value []byte
 }
 
 func (v *BigStorageItem) WriteAt(p []byte, off int64) (n int, err error) {
@@ -25,16 +21,16 @@ func (v *BigStorageItem) WriteAt(p []byte, off int64) (n int, err error) {
 	return len(p), nil
 }
 
-//统一构建存档的Key
-func (v *BigStorageItem) GetStorageKey() *string {
-	var buf bytes.Buffer
-	buf.WriteString(v.UID)
-	buf.WriteByte('/')
-	buf.WriteString(v.BundleID)
-	buf.WriteByte('_')
-	buf.WriteString(v.Key)
-	return strutil.Bytes2Str(buf.Bytes())
-}
+// //统一构建存档的Key
+// func (v *BigStorageItem) GetStorageKey() *string {
+// 	var buf bytes.Buffer
+// 	buf.WriteString(v.UID)
+// 	buf.WriteByte('/')
+// 	buf.WriteString(v.BundleID)
+// 	buf.WriteByte('_')
+// 	buf.WriteString(v.Key)
+// 	return strutil.Bytes2Str(buf.Bytes())
+// }
 
 //根据profile获取s3操作对象
 func NewSession(region, profile *string) (*session.Session, error) {
@@ -61,7 +57,7 @@ func UploadData(sess *session.Session, bucket *string, items []*BigStorageItem) 
 		buf.Write(v.Value)
 		batchObject := s3manager.BatchUploadObject{
 			Object: &s3manager.UploadInput{
-				Key:    v.GetStorageKey(),
+				Key:    v.Key,
 				Bucket: aws.String(*bucket),
 				Body:   &buf,
 				ACL:    aws.String("private"),
@@ -82,7 +78,7 @@ func DownloadData(sess *session.Session, bucket *string, items []*BigStorageItem
 	for _, v := range items {
 		batchObject := s3manager.BatchDownloadObject{
 			Object: &awss3.GetObjectInput{
-				Key:    v.GetStorageKey(),
+				Key:    v.Key,
 				Bucket: aws.String(*bucket),
 			},
 			Writer: v,
