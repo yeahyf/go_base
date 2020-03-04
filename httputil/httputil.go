@@ -9,6 +9,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -49,10 +50,10 @@ func HttpReqHandle(w *http.ResponseWriter, r *http.Request, cache *cache.RedisPo
 	}
 	err = proto.Unmarshal(postData, pb)
 	if err != nil {
-		log.Errorf("Proto Unmarshal Exception!!!", err)
+		log.Errorf("Proto Unmarshal Exception!!!"+reflect.TypeOf(pb).Name(), err)
 		aErr := &ept.Error{
 			Code:    immut.CodeExProtobufUn,
-			Message: "AtAdLoginRequest Unmarshal Error!!!",
+			Message: "Unmarshal Error!!!",
 		}
 		ExRespHandle(w, aErr)
 		return false
@@ -257,14 +258,20 @@ func ReqHeadHandle(r *http.Request, cache *cache.RedisPool) ([]byte, error) {
 	defer gzipReader.Close()
 
 	postData, err := ioutil.ReadAll(gzipReader)
-	if err != nil {
-		return nil, &ept.Error{
-			Code:    immut.CodeExReadIO,
-			Message: "Read Gzip Error!!!" + err.Error(),
-		}
+	if err == nil {
+		return postData, nil
 	}
 
-	return postData, nil
+	//TODO：请注意读取到unexpected EOF也是可以将数据读取完整的
+	if strings.Contains(err.Error(), "unexpected EOF") && len(postData) != 0 {
+		log.Errorf("when read response: %s, will parse to YAML's []byte.", err.Error())
+		return postData, nil
+	}
+	return nil, &ept.Error{
+		Code:    immut.CodeExReadIO,
+		Message: "Read Gzip Error!!!" + err.Error(),
+	}
+
 }
 
 func getPostData(r *http.Request) *bytes.Buffer {
