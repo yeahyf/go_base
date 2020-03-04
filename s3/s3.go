@@ -12,13 +12,16 @@ import (
 )
 
 type BigStorageItem struct {
-	Key   *string
-	Value []byte
+	Key *string
+	Buf bytes.Buffer
 }
 
-func (v *BigStorageItem) WriteAt(p []byte, off int64) (n int, err error) {
-	v.Value = p[:]
-	return len(p), nil
+func (v *BigStorageItem) WriteAt(p []byte, off int64) (int, error) {
+	size, err := v.Buf.Write(p)
+	if err != nil {
+		return 0, err
+	}
+	return size, nil
 }
 
 // //统一构建存档的Key
@@ -52,14 +55,14 @@ func UploadData(sess *session.Session, bucket *string, items []*BigStorageItem) 
 	objects := make([]s3manager.BatchUploadObject, 0, len(items))
 	//批量构建对象
 	for _, v := range items {
-		buf := bytes.Buffer{}
-		buf.Grow(len(v.Value))
-		buf.Write(v.Value)
+		// buf := bytes.Buffer{}
+		// buf.Grow(len(v.Value))
+		// buf.Write(v.Value)
 		batchObject := s3manager.BatchUploadObject{
 			Object: &s3manager.UploadInput{
 				Key:    v.Key,
 				Bucket: aws.String(*bucket),
-				Body:   &buf,
+				Body:   &v.Buf,
 				ACL:    aws.String("private"),
 			},
 		}
