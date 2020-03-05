@@ -7,7 +7,6 @@ import (
 	"crypto/sha1"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"reflect"
 	"strconv"
@@ -144,13 +143,6 @@ func ReqHeadHandle(r *http.Request, cache *cache.RedisPool) ([]byte, error) {
 	buffer := getPostData(r)
 	//postData, err := ioutil.ReadAll(r.Body)
 
-	// if err != nil {
-	// 	return nil, &ept.Error{
-	// 		Code:    immut.CodeExReadIO,
-	// 		Message: "Read Post Data Error!!!",
-	// 	}
-	// }
-
 	postDataMD5 := crypto.MD54Bytes(buffer.Bytes())
 
 	l := make([]string, 0, 3)
@@ -179,7 +171,7 @@ func ReqHeadHandle(r *http.Request, cache *cache.RedisPool) ([]byte, error) {
 	io.WriteString(h, source)
 	Signature := fmt.Sprintf("%x", h.Sum(nil))
 	h = nil
-	builder.Reset()
+	//builder.Reset()
 
 	if log.IsDebug() {
 		log.Debugf("After Singature str = %s", Signature)
@@ -230,14 +222,16 @@ func ReqHeadHandle(r *http.Request, cache *cache.RedisPool) ([]byte, error) {
 		}
 	}
 
+	//无压缩
 	if encoding != EncodingType {
 		return buffer.Bytes(), nil
 	}
 
-	//如果压缩格式为gzip
+	//有压缩
 	if log.IsDebug() {
 		log.Debug("Start gunzip ... ")
 	}
+
 	//bytes.Buffer 的指针对象实现了io.Reader接口
 	// var b bytes.Buffer
 	// _, err = b.Write(postData)
@@ -247,6 +241,7 @@ func ReqHeadHandle(r *http.Request, cache *cache.RedisPool) ([]byte, error) {
 	// 		Message: "Read Post Data to Buffer Error!!!" + err.Error(),
 	// 	}
 	// }
+	//size := buffer.Len()
 
 	gzipReader, err := gzip.NewReader(buffer)
 	if err != nil {
@@ -257,21 +252,39 @@ func ReqHeadHandle(r *http.Request, cache *cache.RedisPool) ([]byte, error) {
 	}
 	defer gzipReader.Close()
 
-	postData, err := ioutil.ReadAll(gzipReader)
-	if err == nil {
-		return postData, nil
+	//========================================
+	var buf bytes.Buffer
+	compressSize := buffer.Len()
+	//默认为5倍的压缩大小
+	buf.Grow(compressSize * 5)
+	//选择开设读取缓存区
+	cacheSize := 4096
+	if compressSize > 1024 {
+		cacheSize = 8092
 	}
-
-	//TODO：请注意读取到unexpected EOF也是可以将数据读取完整的
-	if strings.Contains(err.Error(), "unexpected EOF") && len(postData) != 0 {
-		log.Errorf("when read response: %s, will parse to YAML's []byte.", err.Error())
-		return postData, nil
+	p := make([]byte, cacheSize)
+	for {
+		n, err := gzipReader.Read(p)
+		if err != nil {
+			if strings.Contains(err.Error(), "unexpected EOF") && n != 0 {
+				buf.Write(p[:n])
+				break
+			}
+			return nil, &ept.Error{
+				Code:    immut.CodeExReadIO,
+				Message: "Read Gzip Error!!!" + err.Error(),
+			}
+		}
+		if n != cacheSize {
+			buf.Write(p[:n])
+			break
+		}
+		buf.Write(p)
 	}
-	return nil, &ept.Error{
-		Code:    immut.CodeExReadIO,
-		Message: "Read Gzip Error!!!" + err.Error(),
-	}
-
+	//io.Copy(&buf, reader)
+	//postData, err := ioutil.ReadAll(gzipReader)
+	postData := buf.Bytes()
+	return postData, nil
 }
 
 func getPostData(r *http.Request) *bytes.Buffer {
