@@ -4,7 +4,6 @@ package strutil
 import (
 	"encoding/base64"
 	"sort"
-	"unicode/utf8"
 	"unsafe"
 
 	"github.com/yeahyf/go_base/log"
@@ -80,10 +79,6 @@ func ConvertBytes(src *string) []byte {
 }
 
 func ConvertString(b []byte) *string {
-	if log.IsDebug() {
-		log.Debug("UTF8 is ", utf8.Valid(b))
-	}
-
 	//太短的情况下直接返回字符串，不可能是gzip压缩
 	if len(b) < 2 {
 		return Bytes2Str(b)

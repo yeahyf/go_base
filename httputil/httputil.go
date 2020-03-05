@@ -129,8 +129,6 @@ func ReqHeadHandle(r *http.Request, cache *cache.RedisPool) ([]byte, error) {
 				addr = strings.Split(r.RemoteAddr, ":")[0]
 			}
 		}
-		//log.Debug("ver=", version)
-		//log.Debug("nonce=", nonce)
 		log.Debug("ts=", timestamp)
 		log.Debug("sn=", signature)
 		log.Debug("ip=", addr)
@@ -142,26 +140,20 @@ func ReqHeadHandle(r *http.Request, cache *cache.RedisPool) ([]byte, error) {
 	//获取post的数据
 	buffer := getPostData(r)
 	//postData, err := ioutil.ReadAll(r.Body)
-
 	postDataMD5 := crypto.MD54Bytes(buffer.Bytes())
-
 	l := make([]string, 0, 3)
 	l = append(l, *postDataMD5)
 	l = append(l, nonce)
 	l = append(l, timestamp)
-
 	//排序
 	strutil.SortString(l)
-
 	var builder strings.Builder
 	builder.WriteString(l[0])
 	builder.WriteByte('&')
 	builder.WriteString(l[1])
 	builder.WriteByte('&')
 	builder.WriteString(l[2])
-
 	source := builder.String()
-
 	if log.IsDebug() {
 		log.Debugf("Befor Sginatrue str = %s", source)
 	}
@@ -226,22 +218,6 @@ func ReqHeadHandle(r *http.Request, cache *cache.RedisPool) ([]byte, error) {
 	if encoding != EncodingType {
 		return buffer.Bytes(), nil
 	}
-
-	//有压缩
-	if log.IsDebug() {
-		log.Debug("Start gunzip ... ")
-	}
-
-	//bytes.Buffer 的指针对象实现了io.Reader接口
-	// var b bytes.Buffer
-	// _, err = b.Write(postData)
-	// if err != nil {
-	// 	return nil, &ept.Error{
-	// 		Code:    immut.CodeExReadIO,
-	// 		Message: "Read Post Data to Buffer Error!!!" + err.Error(),
-	// 	}
-	// }
-	//size := buffer.Len()
 
 	gzipReader, err := gzip.NewReader(buffer)
 	if err != nil {
