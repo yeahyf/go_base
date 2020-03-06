@@ -41,7 +41,7 @@ const (
 )
 
 ///组合处理
-func HttpReqHandle(w *http.ResponseWriter, r *http.Request, cache *cache.RedisPool, pb proto.Message) bool {
+func HttpReqHandle(w http.ResponseWriter, r *http.Request, cache *cache.RedisPool, pb proto.Message) bool {
 	postData, err := ReqHeadHandle(r, cache)
 	if err != nil {
 		ExRespHandle(w, err)
@@ -64,15 +64,15 @@ func HttpReqHandle(w *http.ResponseWriter, r *http.Request, cache *cache.RedisPo
 }
 
 //像客户端输出错误信息
-func ExRespHandle(w *http.ResponseWriter, err error) {
+func ExRespHandle(w http.ResponseWriter, err error) {
 	log.Error("Code="+strconv.Itoa(int(err.(*ept.Error).Code)), ", Info="+err.(*ept.Error).Message)
-	(*w).Header().Add(HeadServerEx, "1")
+	w.Header().Add(HeadServerEx, "1")
 	resp := &ept.ErrorResponse{
 		Code: err.(*ept.Error).Code,
 		Info: err.(*ept.Error).Message,
 	}
 	data, _ := proto.Marshal(resp)
-	(*w).Write(data)
+	w.Write(data)
 }
 
 ///对http请求进行通用处理
@@ -273,7 +273,7 @@ func getPostData(r *http.Request) *bytes.Buffer {
 	return &b
 }
 
-func HttpRespHandle(w *http.ResponseWriter, pb proto.Message) {
+func HttpRespHandle(w http.ResponseWriter, pb proto.Message) {
 	if log.IsDebug() {
 		log.Debugf("Resp = %s", pb)
 	}
@@ -287,5 +287,5 @@ func HttpRespHandle(w *http.ResponseWriter, pb proto.Message) {
 		ExRespHandle(w, aErr)
 		return
 	}
-	(*w).Write(result)
+	w.Write(result)
 }
