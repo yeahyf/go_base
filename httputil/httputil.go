@@ -242,7 +242,7 @@ func ReqHeadHandle(r *http.Request, cache *cache.RedisPool) ([]byte, error) {
 	for {
 		n, err := gzipReader.Read(p)
 		if err != nil {
-			if strings.Contains(err.Error(), "unexpected EOF") && n != 0 {
+			if strings.Contains(err.Error(), "EOF") && n != 0 {
 				buf.Write(p[:n])
 				break
 			}
