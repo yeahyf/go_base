@@ -47,9 +47,15 @@ func HttpReqHandle(w http.ResponseWriter, r *http.Request, cache *cache.RedisPoo
 		ExRespHandle(w, err)
 		return false
 	}
+
+	if log.IsDebug() {
+		log.Debug("Post Data: ", postData)
+	}
+
 	err = proto.Unmarshal(postData, pb)
+
 	if err != nil {
-		log.Errorf("Proto Unmarshal Exception!!!"+reflect.TypeOf(pb).Name(), err)
+		log.Errorf("Proto Unmarshal Exception type = %s info = %s !!!"+reflect.TypeOf(pb).Name(), err)
 		aErr := &ept.Error{
 			Code:    immut.CodeExProtobufUn,
 			Message: "Unmarshal Error!!!",
@@ -61,18 +67,6 @@ func HttpReqHandle(w http.ResponseWriter, r *http.Request, cache *cache.RedisPoo
 		log.Debugf("req = %s", pb)
 	}
 	return true
-}
-
-//像客户端输出错误信息
-func ExRespHandle(w http.ResponseWriter, err error) {
-	log.Error("Code="+strconv.Itoa(int(err.(*ept.Error).Code)), ", Info="+err.(*ept.Error).Message)
-	w.Header().Add(HeadServerEx, "1")
-	resp := &ept.ErrorResponse{
-		Code: err.(*ept.Error).Code,
-		Info: err.(*ept.Error).Message,
-	}
-	data, _ := proto.Marshal(resp)
-	w.Write(data)
 }
 
 ///对http请求进行通用处理
@@ -227,7 +221,6 @@ func ReqHeadHandle(r *http.Request, cache *cache.RedisPool) ([]byte, error) {
 		}
 	}
 	defer gzipReader.Close()
-
 	//========================================
 	var buf bytes.Buffer
 	compressSize := buffer.Len()
@@ -242,6 +235,7 @@ func ReqHeadHandle(r *http.Request, cache *cache.RedisPool) ([]byte, error) {
 	for {
 		n, err := gzipReader.Read(p)
 		if err != nil {
+			//请注意读取到unexpected EOF也是可以将数据读取完整的
 			if strings.Contains(err.Error(), "EOF") && n != 0 {
 				buf.Write(p[:n])
 				break
@@ -251,9 +245,11 @@ func ReqHeadHandle(r *http.Request, cache *cache.RedisPool) ([]byte, error) {
 				Message: "Read Gzip Error!!!" + err.Error(),
 			}
 		}
+		//读取到的数据如果不满，不一定代表结束
+		//需要接收数据之后，继续读取
 		if n != cacheSize {
 			buf.Write(p[:n])
-			break
+			continue
 		}
 		buf.Write(p)
 	}
@@ -288,4 +284,16 @@ func HttpRespHandle(w http.ResponseWriter, pb proto.Message) {
 		return
 	}
 	w.Write(result)
+}
+
+//像客户端输出错误信息
+func ExRespHandle(w http.ResponseWriter, err error) {
+	log.Error("Code="+strconv.Itoa(int(err.(*ept.Error).Code)), ", Info="+err.(*ept.Error).Message)
+	w.Header().Add(HeadServerEx, "1")
+	resp := &ept.ErrorResponse{
+		Code: err.(*ept.Error).Code,
+		Info: err.(*ept.Error).Message,
+	}
+	data, _ := proto.Marshal(resp)
+	w.Write(data)
 }
