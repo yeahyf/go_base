@@ -48,10 +48,6 @@ func HttpReqHandle(w http.ResponseWriter, r *http.Request, cache *cache.RedisPoo
 		return false
 	}
 
-	if log.IsDebug() {
-		log.Debug("Post Data: ", postData)
-	}
-
 	err = proto.Unmarshal(postData, pb)
 
 	if err != nil {
