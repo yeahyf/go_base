@@ -84,13 +84,13 @@ func ConvertString(b []byte) *string {
 		return Bytes2Str(b)
 	}
 
-	//gzip压缩进行处理
+	//gzip压缩之后二进制要转为base64
 	if b[0] == 0x1f && b[1] == 0x8b {
-		result := base64.StdEncoding.EncodeToString(b)
-		if log.IsDebug() {
-			log.Debugf("base64 length is %d", len(result))
-		}
-		return &result
+		//以下通过直接调用内部代码，减少字符串生成
+		enc := base64.StdEncoding
+		buf := make([]byte, enc.EncodedLen(len(b)))
+		enc.Encode(buf, b)
+		return Bytes2Str(buf)
 	} else {
 		return Bytes2Str(b)
 	}
