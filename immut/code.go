@@ -34,4 +34,9 @@ const (
 	CodeExDDBGetItem    uint32 = 9010 //DDB读取数据错误
 	CodeExDdbUpdateItem uint32 = 9011 //DDB更新数据错误
 	CodeExS3Donwload    uint32 = 9012 //DDB更新数据错误
+
+	CodeExRDSInert  uint32 = 9100 //插入数据库错误
+	CodeExRDSUpdate uint32 = 9101 //更新数据库错误
+	CodeExRDSSelect uint32 = 9102 //查询数据库错误
+	CodeExRDSDelete uint32 = 9103 //删除数据库错误
 )
