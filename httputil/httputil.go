@@ -217,6 +217,9 @@ func ReqHeadHandle(r *http.Request, cache *cache.RedisPool) ([]byte, error) {
 		}
 	}
 	defer gzipReader.Close()
+
+	//return ioutil.ReadAll(gzipReader)
+	//return postData
 	//========================================
 	var buf bytes.Buffer
 	compressSize := buffer.Len()
@@ -232,9 +235,13 @@ func ReqHeadHandle(r *http.Request, cache *cache.RedisPool) ([]byte, error) {
 		n, err := gzipReader.Read(p)
 		if err != nil {
 			//请注意读取到unexpected EOF也是可以将数据读取完整的
-			if strings.Contains(err.Error(), "EOF") && n != 0 {
-				buf.Write(p[:n])
-				break
+			if strings.Contains(err.Error(), "EOF")  {
+				if  n!=0 {
+					buf.Write(p[:n])
+					continue
+				}else{
+					break
+				}
 			}
 			return nil, &ept.Error{
 				Code:    immut.CodeExReadIO,
@@ -284,11 +291,20 @@ func HttpRespHandle(w http.ResponseWriter, pb proto.Message) {
 
 //像客户端输出错误信息
 func ExRespHandle(w http.ResponseWriter, err error) {
-	log.Error("Code="+strconv.Itoa(int(err.(*ept.Error).Code)), ", Info="+err.(*ept.Error).Message)
 	w.Header().Add(HeadServerEx, "1")
-	resp := &ept.ErrorResponse{
-		Code: err.(*ept.Error).Code,
-		Info: err.(*ept.Error).Message,
+	var resp proto.Message
+	if eptError, ok := err.(*ept.Error);ok{
+		log.Error("Code="+strconv.Itoa(int(eptError.Code)), ", Info="+eptError.Message)
+		resp = &ept.ErrorResponse{
+			Code: err.(*ept.Error).Code,
+			Info: err.(*ept.Error).Message,
+		}
+	}else{
+		resp = &ept.ErrorResponse{
+			Code: 1,
+			Info: err.Error(),
+		}
+		log.Error("Info="+err.Error())
 	}
 	data, _ := proto.Marshal(resp)
 	w.Write(data)
