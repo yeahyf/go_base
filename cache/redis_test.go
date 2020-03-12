@@ -1,5 +1,10 @@
 package cache
 
+import (
+	"fmt"
+	"testing"
+)
+
 var key = "zset1"
 
 // func TestZadd(t *testing.T) {
@@ -63,3 +68,19 @@ var key = "zset1"
 // 		t.Fail()
 // 	}
 // }
+
+func TestDelete(t *testing.T) {
+	p := NewRedisPool(1, 2, 30, "192.168.1.10:6379", "master")
+
+	key := "01_1"
+	//value := "aslkdjfalsdfkj"
+
+	//p.SetValue(&key, &value, 0)
+	result, err := p.DeleteValue(&key)
+	if err == nil {
+		t.Log(result)
+	} else {
+		fmt.Println(err)
+		t.Fail()
+	}
+}

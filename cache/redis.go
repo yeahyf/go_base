@@ -12,6 +12,7 @@ import (
 const (
 	actionSet = "SET"
 	actionGet = "GET"
+	actionDEL = "DEL"
 
 	actionExpire = "EXPIRE"
 	actionSetEx  = "SETEX"
@@ -65,6 +66,13 @@ func (p *RedisPool) SetValue(key *string, value *string, expire int) error {
 	}
 	return err
 }
+
+func (p *RedisPool) DeleteValue(key *string) (int,error) {
+	c := p.Get()
+	defer c.Close() //函数运行结束 ，把连接放回连接池
+	return redis.Int(c.Do(actionDEL, *key))
+}
+
 
 //从Redis中获取指定的值
 func (p *RedisPool) GetValue(key *string) (*string, error) {

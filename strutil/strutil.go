@@ -5,8 +5,6 @@ import (
 	"encoding/base64"
 	"sort"
 	"unsafe"
-
-	"github.com/yeahyf/go_base/log"
 )
 
 ///处理字符串与[]byte数组的转换
@@ -43,9 +41,6 @@ func SortString(list []string) {
 func IsBase64String(str *string) bool {
 	length := len(*str)
 	if length == 0 || len(*str)%4 != 0 {
-		if log.IsDebug() {
-			log.Debugf("current str is not base64! length=%d", length)
-		}
 		return false
 	}
 	//只是判断前面20位
