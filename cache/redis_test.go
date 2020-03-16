@@ -84,3 +84,15 @@ func TestDelete(t *testing.T) {
 		t.Fail()
 	}
 }
+
+func TestMget(t *testing.T) {
+	p := NewRedisPool(1, 2, 30, "127.0.0.1:6379", "")
+	keys := []string{"x1", "d1", "q1"}
+	vals, err := p.MGetValue(keys)
+	if err != nil {
+		t.Fail()
+	}
+	for i, v := range vals {
+		t.Log(i, v)
+	}
+}

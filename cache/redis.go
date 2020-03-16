@@ -14,6 +14,8 @@ const (
 	actionGet = "GET"
 	actionDEL = "DEL"
 
+	actionMGet = "MGET"
+
 	actionExpire = "EXPIRE"
 	actionSetEx  = "SETEX"
 )
@@ -67,12 +69,11 @@ func (p *RedisPool) SetValue(key *string, value *string, expire int) error {
 	return err
 }
 
-func (p *RedisPool) DeleteValue(key *string) (int,error) {
+func (p *RedisPool) DeleteValue(key *string) (int, error) {
 	c := p.Get()
 	defer c.Close() //函数运行结束 ，把连接放回连接池
 	return redis.Int(c.Do(actionDEL, *key))
 }
-
 
 //从Redis中获取指定的值
 func (p *RedisPool) GetValue(key *string) (*string, error) {
@@ -88,6 +89,22 @@ func (p *RedisPool) GetValue(key *string) (*string, error) {
 	}
 
 	return &replay, nil
+}
+
+func (p *RedisPool) MGetValue(keys []string) ([]string, error) {
+	c := p.Get()
+	defer c.Close() //函数运行结束 ，把连接放回连接池
+
+	s := make([]interface{}, len(keys))
+	for i, v := range keys {
+		s[i] = v
+	}
+
+	replay, err := redis.Strings(c.Do(actionMGet, s...))
+	if err != nil {
+		return nil, err
+	}
+	return replay, nil
 }
 
 //设置过期时间
