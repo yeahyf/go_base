@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"crypto/sha1"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -40,9 +41,13 @@ const (
 	HeadUserAgent = "User-Agent"
 )
 
-///组合处理
-func HttpReqHandle(w http.ResponseWriter, r *http.Request, cache *cache.RedisPool, pb proto.Message) bool {
-	postData, err := ReqHeadHandle(r, cache)
+type CommonCache struct {
+	ReadCache  *cache.RedisPool
+	WriteCache *cache.RedisPool
+}
+
+func HttpReqHandle(w http.ResponseWriter, r *http.Request, commonCache *CommonCache, pb proto.Message) bool {
+	postData, err := ReqHeadHandle(r, commonCache)
 	if err != nil {
 		ExRespHandle(w, err)
 		return false
@@ -66,7 +71,7 @@ func HttpReqHandle(w http.ResponseWriter, r *http.Request, cache *cache.RedisPoo
 }
 
 ///对http请求进行通用处理
-func ReqHeadHandle(r *http.Request, cache *cache.RedisPool) ([]byte, error) {
+func ReqHeadHandle(r *http.Request, commonCache *CommonCache) ([]byte, error) {
 	// 对请求方法做判断
 	if r.Method != HttpPost {
 		return nil, &ept.Error{
@@ -184,9 +189,13 @@ func ReqHeadHandle(r *http.Request, cache *cache.RedisPool) ([]byte, error) {
 		}
 	}
 
-	if cache != nil {
+	if commonCache == nil {
+		return nil, errors.New("CommonRedis is Nil")
+	}
+
+	if commonCache.ReadCache != nil {
 		//nonce
-		value, err := cache.GetValue(&nonce)
+		value, err := commonCache.ReadCache.GetValue(&nonce)
 		if err != nil {
 			return nil, &ept.Error{
 				Code:    immut.CodeExRedis,
@@ -200,7 +209,7 @@ func ReqHeadHandle(r *http.Request, cache *cache.RedisPool) ([]byte, error) {
 			}
 		} else { //说明里边没有值
 			value := ""
-			cache.SetValue(&nonce, &value, 5*60) //180秒
+			commonCache.WriteCache.SetValue(&nonce, &value, 5*60) //180秒
 		}
 	}
 
@@ -235,11 +244,11 @@ func ReqHeadHandle(r *http.Request, cache *cache.RedisPool) ([]byte, error) {
 		n, err := gzipReader.Read(p)
 		if err != nil {
 			//请注意读取到unexpected EOF也是可以将数据读取完整的
-			if strings.Contains(err.Error(), "EOF")  {
-				if  n!=0 {
+			if strings.Contains(err.Error(), "EOF") {
+				if n != 0 {
 					buf.Write(p[:n])
 					continue
-				}else{
+				} else {
 					break
 				}
 			}
@@ -293,18 +302,18 @@ func HttpRespHandle(w http.ResponseWriter, pb proto.Message) {
 func ExRespHandle(w http.ResponseWriter, err error) {
 	w.Header().Add(HeadServerEx, "1")
 	var resp proto.Message
-	if eptError, ok := err.(*ept.Error);ok{
+	if eptError, ok := err.(*ept.Error); ok {
 		log.Error("Code="+strconv.Itoa(int(eptError.Code)), ", Info="+eptError.Message)
 		resp = &ept.ErrorResponse{
 			Code: err.(*ept.Error).Code,
 			Info: err.(*ept.Error).Message,
 		}
-	}else{
+	} else {
 		resp = &ept.ErrorResponse{
 			Code: 1,
 			Info: err.Error(),
 		}
-		log.Error("Info="+err.Error())
+		log.Error("Info=" + err.Error())
 	}
 	data, _ := proto.Marshal(resp)
 	w.Write(data)

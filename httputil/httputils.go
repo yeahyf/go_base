@@ -7,7 +7,6 @@ import (
 	"github.com/yeahyf/go_base/immut"
 
 	"github.com/gogo/protobuf/proto"
-	"github.com/yeahyf/go_base/cache"
 	"github.com/yeahyf/go_base/ept"
 	"github.com/yeahyf/go_base/log"
 )
@@ -39,8 +38,8 @@ func ExRespHandler(w http.ResponseWriter, err error) {
 }
 
 ///组合处理
-func ReqHandle(w *http.ResponseWriter, r *http.Request, cache *cache.RedisPool, pb proto.Message) error {
-	postData, err := ReqHeadHandle(r, cache)
+func ReqHandle(w *http.ResponseWriter, r *http.Request, commonCache *CommonCache, pb proto.Message) error {
+	postData, err := ReqHeadHandle(r, commonCache)
 	if err != nil {
 		return err
 	}
