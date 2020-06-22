@@ -54,11 +54,11 @@ func scpFile(host, localFilePath, remoteDir, user, passwd, key string, port int)
 	_, err = io.Copy(dstFile, srcFile)
 	if err != nil {
 		log.Error(err)
-		log.Errorf("Copy IPDB to %s path: %s  Failed!", host, remoteDir)
+		log.Errorf("Copy File to %s path: %s  Failed!", host, remoteDir)
 		return err
 	}
 	if log.IsDebug() {
-		log.Debugf("Copy IPDB to %s path: %s  Success!", host, remoteDir)
+		log.Debugf("Copy File to %s path: %s  Success!", host, remoteDir)
 	}
 	return nil
 }
