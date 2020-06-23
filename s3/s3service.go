@@ -40,6 +40,35 @@ func Delete(destKey *string, s3Service *s3.S3, bucket *string) error {
 	return nil
 }
 
+func UploadBuffer(data []byte, destKey *string, s3Service *s3.S3, bucket *string, acl *string) error {
+	contentType := "application/octet-stream"
+
+	input := &s3.PutObjectInput{
+		Bucket:        bucket,
+		Key:           destKey,
+		ACL:           acl,
+		Body:          bytes.NewReader(data),
+		ContentLength: aws.Int64(int64(len(data))),
+		ContentType:   &contentType,
+		StorageClass:  aws.String(s3.ObjectStorageClassIntelligentTiering),
+	}
+
+	_, err := s3Service.PutObject(input)
+	if err != nil {
+		if aerr, ok := err.(awserr.Error); ok {
+			switch aerr.Code() {
+			default:
+				log.Error(s3.ErrCodeNoSuchKey, aerr.Error())
+			}
+		} else {
+			log.Error(err.Error())
+		}
+		return err
+	}
+	//log.Info(result)
+	return nil
+}
+
 func Upload(srcFile *string, destKey *string, s3Service *s3.S3, bucket *string, acl *string) error {
 	file, err := os.Open(*srcFile)
 	if err != nil {
