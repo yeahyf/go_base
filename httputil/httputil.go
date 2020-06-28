@@ -7,6 +7,7 @@ import (
 	"crypto/sha1"
 	"errors"
 	"fmt"
+	"github.com/yeahyf/go_base/cfg"
 	"io"
 	"net/http"
 	"reflect"
@@ -35,6 +36,7 @@ const (
 	HttpPost            = "POST"
 	HeadServerEx        = "X-Server-Ex"
 	EncodingType        = "gzip"
+	HeadXAppkey         = "X-Appkey"
 
 	CtProtobuf    = "application/x-protobuf"
 	CtJson        = "application/json"
@@ -85,7 +87,31 @@ func ReqHeadHandle(r *http.Request, commonCache *CommonCache) ([]byte, error) {
 	if version == immut.BlankString {
 		return nil, &ept.Error{
 			Code:    immut.CodeExVersion,
+			Message: "Req Head Version is NULL Error!!!",
+		}
+	}
+
+	if ver, err := strconv.ParseFloat(version, 32); err != nil {
+		return nil, &ept.Error{
+			Code:    immut.CodeExVersion,
 			Message: "Req Head Version Error!!!",
+		}
+	} else if ver >= 2.0 { //判断版本大于等于2.0 开启appkey白名单校验
+		//appkey不能为空
+		appkey := r.Header.Get(HeadXAppkey)
+		if appkey == immut.BlankString {
+			return nil, &ept.Error{
+				Code:    immut.CodeExAppkey,
+				Message: "Req Head Appkey is NULL Error!!!",
+			}
+		}
+
+		//白名单校验
+		if !cfg.CheckAppKey(appkey) {
+			return nil, &ept.Error{
+				Code:    immut.CodeExAppkey,
+				Message: "Req Head Appkey not publish Error!!!",
+			}
 		}
 	}
 

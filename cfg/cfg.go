@@ -129,3 +129,15 @@ func GetStringArray(key string) []string {
 	s := p.Get(key)
 	return strings.Split(s, ",")
 }
+
+//判断appkey是否在白名单
+func CheckAppKey(appkey string) bool {
+	s := p.Get("appkey.list")
+	array := strings.Split(s, ",")
+	for _, v := range array {
+		if appkey == v {
+			return true
+		}
+	}
+	return false
+}
