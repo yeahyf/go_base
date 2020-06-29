@@ -36,7 +36,7 @@ const (
 	HttpPost            = "POST"
 	HeadServerEx        = "X-Server-Ex"
 	EncodingType        = "gzip"
-	HeadXAppkey         = "X-Appkey"
+	HeadXAppKey         = "X-AppKey"
 
 	CtProtobuf    = "application/x-protobuf"
 	CtJson        = "application/json"
@@ -98,19 +98,19 @@ func ReqHeadHandle(r *http.Request, commonCache *CommonCache) ([]byte, error) {
 		}
 	} else if ver >= 2.0 { //判断版本大于等于2.0 开启appkey白名单校验
 		//appkey不能为空
-		appkey := r.Header.Get(HeadXAppkey)
+		appkey := r.Header.Get(HeadXAppKey)
 		if appkey == immut.BlankString {
 			return nil, &ept.Error{
-				Code:    immut.CodeExAppkey,
-				Message: "Req Head Appkey is NULL Error!!!",
+				Code:    immut.CodeExAppKey,
+				Message: "Req Head AppKey is NULL Error!!!",
 			}
 		}
 
 		//白名单校验
 		if !cfg.CheckAppKey(appkey) {
 			return nil, &ept.Error{
-				Code:    immut.CodeExAppkey,
-				Message: "Req Head Appkey not publish Error!!!",
+				Code:    immut.CodeExAppKey,
+				Message: "Req Head AppKey not publish Error!!!",
 			}
 		}
 	}

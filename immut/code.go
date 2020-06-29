@@ -9,7 +9,7 @@ const (
 	CodeExTs         uint32 = 1003 //时间戳格式错误
 	CodeExSignature  uint32 = 1004 //签名错误
 	CodeExRepeatReq  uint32 = 1005 //随机数重复
-	CodeExAppkey    uint32 = 1008 //appkey错误
+	CodeExAppKey    uint32 = 1008 //appkey错误
 
 	CodeExProtobufUn uint32 = 1006 //请求参数
 	CodeExProtobufMa uint32 = 1007 //请求参数
