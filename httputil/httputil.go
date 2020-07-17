@@ -203,15 +203,16 @@ func ReqHeadHandle(r *http.Request, commonCache *CommonCache) ([]byte, error) {
 	if err != nil {
 		return nil, &ept.Error{
 			Code:    immut.CodeExTs,
-			Message: "Timestampt Error!!!",
+			Message: "Timestampt format Error!!!",
 		}
 	}
 	tm := time.Unix(ts, 0)
 	//超过3分钟,过期请求
-	if time.Now().Sub(tm) > time.Duration(3*time.Minute) {
+	duration := time.Now().Sub(tm)
+	if duration > time.Duration(3*time.Minute) {
 		return nil, &ept.Error{
 			Code:    immut.CodeExTs,
-			Message: "Timestampt Error!!!",
+			Message: "Timestampt duration Error!!! duration=" + duration.String(),
 		}
 	}
 
