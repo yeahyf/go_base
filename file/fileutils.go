@@ -11,6 +11,10 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
+
+	"github.com/jlaffaye/ftp"
+	"github.com/yeahyf/go_base/log"
 )
 
 //判断文件是否存在或者不是文件
@@ -148,4 +152,46 @@ func SHA1File(filePath string) string {
 		return ""
 	}
 	return hex.EncodeToString(m.Sum(nil))
+}
+
+//使用ftp进行文件传输，注意需要对ftp服务器进行适当的配置
+func FtpFile(destHost, sourceFilePath, destPath, destFileName, user, passwd string) error {
+	//建立连接
+	c, err := ftp.Dial(destHost, ftp.DialWithTimeout(5*time.Second))
+	if err != nil {
+		return err
+	}
+	//退出
+	defer func() {
+		err = c.Quit()
+		if err != nil {
+			log.Error("ftp quit error!", err)
+		}
+	}()
+
+	//登录
+	err = c.Login(user, passwd)
+	if err != nil {
+		return err
+	}
+
+	//修改路径，需要修改selinux的配置才可以
+	err = c.ChangeDir(destPath)
+	if err != nil {
+		return err
+	}
+
+	file, err := os.Open(sourceFilePath)
+	if err != nil {
+		return err
+	}
+
+	r := bufio.NewReader(file)
+
+	//开始传递文件
+	err = c.Stor(destFileName, r)
+	if err != nil {
+		return err
+	}
+	return nil
 }

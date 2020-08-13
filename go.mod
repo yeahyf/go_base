@@ -1,6 +1,6 @@
 module github.com/yeahyf/go_base
 
-go 1.13
+go 1.14
 
 require (
 	github.com/aws/aws-sdk-go v1.29.11
@@ -8,6 +8,7 @@ require (
 	github.com/gogo/protobuf v1.3.1
 	github.com/golang/protobuf v1.3.2
 	github.com/gomodule/redigo v2.0.0+incompatible
+	github.com/jlaffaye/ftp v0.0.0-20200730135723-c2ee4fa2503b
 	github.com/pkg/sftp v1.11.0
 	github.com/smallnest/rpcx v0.0.0-20200228082541-3c15529b0f91
 	go.mongodb.org/mongo-driver v1.3.0
