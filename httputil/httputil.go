@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"compress/gzip"
 	"crypto/sha1"
-	"errors"
 	"fmt"
 	"github.com/yeahyf/go_base/cfg"
 	"io"
@@ -216,11 +215,7 @@ func ReqHeadHandle(r *http.Request, commonCache *CommonCache) ([]byte, error) {
 		}
 	}
 
-	if commonCache == nil {
-		return nil, errors.New("CommonRedis is Nil")
-	}
-
-	if commonCache.ReadCache != nil {
+	if commonCache != nil {
 		//nonce
 		value, err := commonCache.ReadCache.GetValue(&nonce)
 		if err != nil {

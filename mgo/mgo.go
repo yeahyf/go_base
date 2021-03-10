@@ -152,6 +152,32 @@ func (c *MongoDBClient) Select(colName *string, key bson.M, max int64) ([]bson.M
 	return results, nil
 }
 
+func (c *MongoDBClient) SelectByOptions(colName *string, key bson.M, options *options.FindOptions) ([]bson.M, error) {
+	col := c.Database(*c.dbName).Collection(*colName)
+	var cursor *mongo.Cursor
+	var err error
+	cursor, err = col.Find(context.TODO(), key, options)
+	if err != nil {
+		log.Error(err)
+		return nil, err
+	}
+	defer cursor.Close(context.TODO())
+	results := make([]bson.M, 0, 10)
+	for cursor.Next(context.TODO()) {
+		var result bson.M
+		err := cursor.Decode(&result)
+		if err != nil {
+			log.Error(err)
+		}
+		results = append(results, result)
+	}
+	if err := cursor.Err(); err != nil {
+		log.Error(err)
+		return nil, err
+	}
+	return results, nil
+}
+
 //======================
 
 func (c *MongoDBClient) CloseClient() {
