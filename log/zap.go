@@ -103,6 +103,8 @@ func initConfig(config *Config) {
 			infoLog = initLogger(&logConfig)
 		case LevelError:
 			errorLog = initLogger(&logConfig)
+		case LevelWarn:
+			warnLog = initLogger(&logConfig)
 		}
 	}
 	go reSetLevel() //定时处理
