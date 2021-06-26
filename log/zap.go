@@ -18,6 +18,7 @@ import (
 var debugLog *zap.Logger
 var infoLog *zap.Logger
 var errorLog *zap.Logger
+var warnLog *zap.Logger
 var atom zap.AtomicLevel
 var logConfigFile string
 
@@ -205,4 +206,13 @@ func Error(msg ...interface{}) {
 //Errorf 按照格式输出日志
 func Errorf(format string, msg ...interface{}) {
 	errorLog.Error(fmt.Sprintf(format, msg...))
+}
+
+func Warn(msg ...interface{}){
+	info := fmt.Sprint(msg...)
+	warnLog.Warn(fmt.Sprintf("%s", info))
+}
+
+func Warnf(format string, msg ...interface{}) {
+	warnLog.Warn(fmt.Sprintf(format, msg...))
 }
