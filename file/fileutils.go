@@ -89,6 +89,11 @@ func ReadLine(fileName string, handler func(*string)) error {
 		line, err := buffer.ReadString('\n')
 		if err != nil {
 			if err == io.EOF {
+				//可能最后一行不是空行
+				line = strings.TrimSpace(line)
+				if len(line) > 0{
+					handler(&line)
+				}
 				return nil
 			}
 			return err
