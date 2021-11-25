@@ -22,10 +22,12 @@ const (
 
 type RedisPool struct {
 	*redis.Pool //创建redis连接池
+	DBIndex int
 }
 
+
 //构建新的Redis连接池
-func NewRedisPool(init, maxsize, idle int, address, password string) *RedisPool {
+func NewRedisPoolByDB(init, maxsize, idle int, address, password string,dbIndex int) *RedisPool {
 	fmt.Println("Start init Redis ... ")
 	redisPool := &redis.Pool{ //实例化一个连接池
 		MaxIdle:     init,                              //最初的连接数量
@@ -52,7 +54,14 @@ func NewRedisPool(init, maxsize, idle int, address, password string) *RedisPool 
 	}
 	return &RedisPool{
 		redisPool,
+		dbIndex,
 	}
+}
+
+
+//构建新的Redis连接池
+func NewRedisPool(init, maxsize, idle int, address, password string) *RedisPool {
+	return  NewRedisPoolByDB(init,maxsize,idle,address,password,0)  //默认选择0号库
 }
 
 // Set 用法：Set("key", val, 60)，其中 expire 的单位为秒
@@ -60,6 +69,9 @@ func (p *RedisPool) SetValue(key *string, value *string, expire int) error {
 	c := p.Get()
 	defer c.Close() //函数运行结束 ，把连接放回连接池
 
+	if p.DBIndex !=0 {
+		c.Do("SELECT", p.DBIndex)
+	}
 	var err error
 	if expire > 0 {
 		_, err = c.Do(actionSetEx, *key, expire, *value)
@@ -72,6 +84,10 @@ func (p *RedisPool) SetValue(key *string, value *string, expire int) error {
 func (p *RedisPool) DeleteValue(key *string) (int, error) {
 	c := p.Get()
 	defer c.Close() //函数运行结束 ，把连接放回连接池
+
+	if p.DBIndex !=0 {
+		c.Do("SELECT", p.DBIndex)
+	}
 	return redis.Int(c.Do(actionDEL, *key))
 }
 
@@ -80,6 +96,9 @@ func (p *RedisPool) GetValue(key *string) (*string, error) {
 	c := p.Get()
 	defer c.Close() //函数运行结束 ，把连接放回连接池
 
+	if p.DBIndex !=0 {
+		c.Do("SELECT", p.DBIndex)
+	}
 	replay, err := redis.String(c.Do(actionGet, *key))
 	//说明没有值
 	if err == redis.ErrNil {
@@ -95,6 +114,9 @@ func (p *RedisPool) MGetValue(keys []string) ([]string, error) {
 	c := p.Get()
 	defer c.Close() //函数运行结束 ，把连接放回连接池
 
+	if p.DBIndex !=0 {
+		c.Do("SELECT", p.DBIndex)
+	}
 	s := make([]interface{}, len(keys))
 	for i, v := range keys {
 		s[i] = v
@@ -112,6 +134,9 @@ func (p *RedisPool) SetExpire(key *string, expire int) error {
 	c := p.Get()
 	defer c.Close() //函数运行结束 ，把连接放回连接池
 
+	if p.DBIndex !=0 {
+		c.Do("SELECT", p.DBIndex)
+	}
 	_, err := c.Do(actionExpire, *key, expire)
 	return err
 }
