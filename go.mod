@@ -7,7 +7,7 @@ require (
 	github.com/go-sql-driver/mysql v1.6.0
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang/protobuf v1.5.2
-	github.com/gomodule/redigo v1.8.5
+	github.com/gomodule/redigo v1.8.6
 	github.com/jlaffaye/ftp v0.0.0-20210307004419-5d4190119067
 	github.com/lestrrat/go-file-rotatelogs v0.0.0-20180223000712-d3151e2a480f
 	github.com/pkg/sftp v1.13.4

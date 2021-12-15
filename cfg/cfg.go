@@ -93,7 +93,17 @@ func GetInt(key string) int {
 	s := p.Get(key)
 	value, err := strconv.Atoi(s)
 	if err != nil {
-		log.Error(err)
+		log.Error("Get Error Key = ",key,err)
+		return 0
+	}
+	return value
+}
+
+func GetInt64(key string) int64{
+	s := p.Get(key)
+	value, err := strconv.ParseInt(s,10,64)
+	if err != nil {
+		log.Error( key,"Get Error! ",err)
 		return 0
 	}
 	return value
@@ -103,7 +113,7 @@ func GetInt(key string) int {
 func GetBool(key string) bool {
 	value, err := strconv.ParseBool(p.Get(key))
 	if err != nil {
-		log.Error(err)
+		log.Error( key,"Get Error! ",err)
 		return false
 	}
 	return value
