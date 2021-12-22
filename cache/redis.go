@@ -1,7 +1,8 @@
-/// 提供Reids的基本管理接口
+/// 提供Redis的基本管理接口
 package cache
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -11,14 +12,18 @@ import (
 )
 
 const (
-	actionSet = "SET"
-	actionGet = "GET"
-	actionDEL = "DEL"
+	Set = "SET"
+	Get = "GET"
+	DEL = "DEL"
 
-	actionMGet = "MGET"
+	MGet = "MGET"
 
-	actionExpire = "EXPIRE"
-	actionSetEx  = "SETEX"
+	Expire = "EXPIRE"
+	SetEx  = "SETEX"
+
+	Multi  = "MULTI"
+	Select = "SELECT"
+	Exec   = "EXEC"
 )
 
 type RedisPool struct {
@@ -63,123 +68,155 @@ func NewRedisPool(init, maxsize, idle int, address, password string) *RedisPool 
 	return NewRedisPoolByDB(init, maxsize, idle, address, password, 0) //默认选择0号库
 }
 
-// Set 用法：Set("key", val, 60)，其中 expire 的单位为秒
-func (p *RedisPool) SetValueForDBIdx(key *string, value *string, expire ,index int) error {
+// SetValueForDBIdx  expire的单位为秒 dbIdx 为所使用的DB的索引(默认0-15)
+func (p *RedisPool) SetValueForDBIdx(key *string, value *string, expire, dbIdx int) error {
 	c := p.Get()
-	defer c.Close() //函数运行结束 ，把连接放回连接池
-
-	c.Do("SELECT",index)
-
-	var err error
-	if expire > 0 {
-		_, err = c.Do(actionSetEx, *key, expire, *value)
-	} else {
-		_, err = c.Do(actionSet, *key, *value)
+	if c == nil {
+		return errors.New("get redis conn error")
 	}
+	defer c.Close()
+
+	c.Send(Multi)
+	c.Send(Select, dbIdx)
+	if expire > 0 {
+		_ = c.Send(SetEx, *key, expire, *value)
+	} else {
+		_ = c.Send(Set, *key, *value)
+	}
+	_, err := c.Do(Exec)
 	return err
 }
 
-func (p *RedisPool) DeleteValueForDBIdx(key *string,index int) (int, error) {
+//DeleteValueForDBIdx 删除一个key dbIdx 为所使用的DB的索引(默认0-15)
+func (p *RedisPool) DeleteValueForDBIdx(key *string, dbIdx int) (int, error) {
 	c := p.Get()
+	if c == nil {
+		return 0, errors.New("get redis conn error")
+	}
 	defer c.Close() //函数运行结束 ，把连接放回连接池
 
-	c.Do("SELECT", index)
+	c.Send(Multi)
+	c.Send(Select, dbIdx)
+	c.Send(DEL, *key)
 
-	return redis.Int(c.Do(actionDEL, *key))
+	replay, err := redis.Values(c.Do(Exec))
+	if err != nil {
+		return 0, err
+	}
+	return redis.Int(replay[1], err)
 }
 
-//从Redis中获取指定的值
-func (p *RedisPool) GetValueForDBIdx(key *string,index int) (*string, error) {
+//GetValueForDBIdx 从Redis中获取指定的值
+func (p *RedisPool) GetValueForDBIdx(key *string, dbIdx int) (*string, error) {
 	c := p.Get()
+	if c == nil {
+		return nil, errors.New("can not get redis conn")
+	}
 	defer c.Close() //函数运行结束 ，把连接放回连接池
 
-	c.Do("SELECT", index)
-
-	replay, err := redis.String(c.Do(actionGet, *key))
-	//说明没有值
-	if err == redis.ErrNil {
-		return nil, nil
-	} else if err != nil {
+	c.Send("MULTI")
+	c.Send("SELECT", dbIdx)
+	c.Send(Get, *key)
+	replay, err := redis.Values(c.Do("EXEC"))
+	if err != nil {
 		return nil, err
 	}
-
-	return &replay, nil
+	var value string
+	value, err = redis.String(replay[1], err)
+	if err != nil {
+		if err ==  redis.ErrNil {
+			return nil, nil
+		} else {
+			return nil, err
+		}
+	}
+	return &value, err
 }
 
-// Set 用法：Set("key", val, 60)，其中 expire 的单位为秒
+// SetValue 用法：Set("key", val, 60)，其中 expire 的单位为秒
 func (p *RedisPool) SetValue(key *string, value *string, expire int) error {
-	c := p.Get()
-	defer c.Close() //函数运行结束 ，把连接放回连接池
+	if p.DBIndex == 0 {
+		c := p.Get()
+		if c == nil {
+			return errors.New("get redis conn error")
+		}
+		defer c.Close()
 
-	if p.DBIndex != 0 {
-		c.Do("SELECT", p.DBIndex)
+		var err error
+		if expire > 0 {
+			_, err = c.Do(SetEx, *key, expire, *value)
+		} else {
+			_, err = c.Do(Set, *key, *value)
+		}
+		return err
 	}
-	var err error
-	if expire > 0 {
-		_, err = c.Do(actionSetEx, *key, expire, *value)
-	} else {
-		_, err = c.Do(actionSet, *key, *value)
-	}
-	return err
+	return p.SetValueForDBIdx(key, value, expire, p.DBIndex)
 }
 
+//DeleteValue 删除值,默认为dbIdx库中的
 func (p *RedisPool) DeleteValue(key *string) (int, error) {
-	c := p.Get()
-	defer c.Close() //函数运行结束 ，把连接放回连接池
+	if p.DBIndex == 0 {
+		c := p.Get()
+		if c == nil {
+			return 0, errors.New("get redis conn error")
+		}
+		defer c.Close()
 
-	if p.DBIndex != 0 {
-		c.Do("SELECT", p.DBIndex)
+		return redis.Int(c.Do(DEL, *key))
 	}
-	return redis.Int(c.Do(actionDEL, *key))
+	return p.DeleteValueForDBIdx(key, p.DBIndex)
 }
 
 //从Redis中获取指定的值
 func (p *RedisPool) GetValue(key *string) (*string, error) {
-	c := p.Get()
-	defer c.Close() //函数运行结束 ，把连接放回连接池
+	if p.DBIndex == 0 {
+		c := p.Get()
+		if c == nil {
+			return nil, errors.New("get redis conn error")
+		}
+		defer c.Close() //函数运行结束 ，把连接放回连接池
 
-	if p.DBIndex != 0 {
-		c.Do("SELECT", p.DBIndex)
+		replay, err := redis.String(c.Do(Get, *key))
+		//说明没有值
+		if err == redis.ErrNil {
+			return nil, nil
+		} else if err != nil {
+			return nil, err
+		}
+		return &replay, nil
 	}
-	replay, err := redis.String(c.Do(actionGet, *key))
-	//说明没有值
-	if err == redis.ErrNil {
-		return nil, nil
-	} else if err != nil {
-		return nil, err
-	}
-
-	return &replay, nil
+	return p.GetValueForDBIdx(key, p.DBIndex)
 }
 
+//MGetValue 一次性获取多个Key的值,不支持选择库!!
 func (p *RedisPool) MGetValue(keys []string) ([]string, error) {
 	c := p.Get()
+	if c == nil {
+		return nil, errors.New("get redis conn error")
+	}
 	defer c.Close() //函数运行结束 ，把连接放回连接池
 
-	if p.DBIndex != 0 {
-		c.Do("SELECT", p.DBIndex)
-	}
 	s := make([]interface{}, len(keys))
 	for i, v := range keys {
 		s[i] = v
 	}
 
-	replay, err := redis.Strings(c.Do(actionMGet, s...))
+	replay, err := redis.Strings(c.Do(MGet, s...))
 	if err != nil {
 		return nil, err
 	}
 	return replay, nil
 }
 
-//设置过期时间
+//SetExpire 设置过期时间 不支持选择库!!
 func (p *RedisPool) SetExpire(key *string, expire int) error {
 	c := p.Get()
+	if c == nil {
+		return errors.New("get redis conn error")
+	}
 	defer c.Close() //函数运行结束 ，把连接放回连接池
 
-	if p.DBIndex != 0 {
-		c.Do("SELECT", p.DBIndex)
-	}
-	_, err := c.Do(actionExpire, *key, expire)
+	_, err := c.Do(Expire, *key, expire)
 	return err
 }
 
