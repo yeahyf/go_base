@@ -1,4 +1,3 @@
-///字符串工具接口封装
 package strutil
 
 import (
@@ -7,26 +6,24 @@ import (
 	"unsafe"
 )
 
-///处理字符串与[]byte数组的转换
-
-//byte数组转化为字符串，返回字符串
+//Bytes2str byte数组转化为字符串，返回字符串
 func Bytes2str(b []byte) string {
 	return *(*string)(unsafe.Pointer(&b))
 }
 
-//byte数组转化为字符串，返回字符串引用
+//Bytes2Str byte数组转化为字符串，返回字符串引用
 func Bytes2Str(b []byte) *string {
 	return (*string)(unsafe.Pointer(&b))
 }
 
-//字符串转化为byte数组
+//Str2bytes 字符串转化为byte数组
 func Str2bytes(s string) []byte {
-	x := (*[2]uintptr)(unsafe.Pointer(&s)) // 获取s的起始地址开始后的两个 uintptr 指针
+	x := (*[2]uintptr)(unsafe.Pointer(&s)) // 获取s的起始地址开始后的两个uintptr指针
 	h := [3]uintptr{x[0], x[1], x[1]}      // 构造三个指针数组
 	return *(*[]byte)(unsafe.Pointer(&h))
 }
 
-//字符串转化为byte数组
+//String2bytes 字符串转化为byte数组
 func String2bytes(s *string) []byte {
 	x := (*[2]uintptr)(unsafe.Pointer(s)) // 获取s的起始地址开始后的两个 uintptr 指针
 	h := [3]uintptr{x[0], x[1], x[1]}     // 构造三个指针数组
@@ -37,7 +34,7 @@ func SortString(list []string) {
 	sort.Sort(sort.StringSlice(list))
 }
 
-//如果是gzip压缩，就转base64
+//IsBase64String 如果是gzip压缩，就转base64
 func IsBase64String(str *string) bool {
 	length := len(*str)
 	if length == 0 || len(*str)%4 != 0 {
@@ -61,6 +58,7 @@ func IsBase64String(str *string) bool {
 	return true
 }
 
+//ConvertBytes 将字符串指针转为byte数组
 func ConvertBytes(src *string) []byte {
 	if !IsBase64String(src) {
 		return String2bytes(src)
@@ -73,6 +71,7 @@ func ConvertBytes(src *string) []byte {
 	return String2bytes(src)
 }
 
+//ConvertString 将字byte数组转为字符串指针
 func ConvertString(b []byte) *string {
 	//太短的情况下直接返回字符串，不可能是gzip压缩
 	if len(b) < 2 {

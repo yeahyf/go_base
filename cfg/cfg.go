@@ -1,4 +1,3 @@
-///提供基本的配置管理接口
 package cfg
 
 import (
@@ -14,12 +13,12 @@ import (
 
 var p *Properties
 
-//构建存储对象
+//Properties 构建存储对象
 type Properties struct {
 	values map[string]string
 }
 
-//创建新的存储对象
+//NewProperties 创建新的存储对象
 func NewProperties() *Properties {
 	p := &Properties{
 		values: make(map[string]string),
@@ -27,7 +26,7 @@ func NewProperties() *Properties {
 	return p
 }
 
-//加载方法
+//Load 加载方法
 func (p *Properties) Load(r io.Reader) error {
 	buf := bufio.NewReader(r)
 	for {
@@ -73,7 +72,7 @@ func (p *Properties) Get(key string) string {
 
 //=============================================
 
-//加载配置函数
+//Load 加载配置函数
 func Load(configPath *string) {
 	data, err := ioutil.ReadFile(*configPath)
 	if err != nil {
@@ -83,43 +82,43 @@ func Load(configPath *string) {
 	err = p.Load(bytes.NewReader(data))
 }
 
-//获取字符串
+//GetString 获取字符串
 func GetString(key string) string {
 	return p.Get(key)
 }
 
-//获取整形
+//GetInt 获取整形
 func GetInt(key string) int {
 	s := p.Get(key)
 	value, err := strconv.Atoi(s)
 	if err != nil {
-		log.Error("Get Error Key = ",key,err)
+		log.Errorf("couldn't get key(%s) value, %v", key, err)
 		return 0
 	}
 	return value
 }
 
-func GetInt64(key string) int64{
+func GetInt64(key string) int64 {
 	s := p.Get(key)
-	value, err := strconv.ParseInt(s,10,64)
+	value, err := strconv.ParseInt(s, 10, 64)
 	if err != nil {
-		log.Error( key,"Get Error! ",err)
+		log.Errorf("couldn't get key(%s) value, %v", key, err)
 		return 0
 	}
 	return value
 }
 
-//获取布尔型
+//GetBool 获取布尔型
 func GetBool(key string) bool {
 	value, err := strconv.ParseBool(p.Get(key))
 	if err != nil {
-		log.Error( key,"Get Error! ",err)
+		log.Errorf("couldn't get key(%s) value, %v", key, err)
 		return false
 	}
 	return value
 }
 
-//获取整形数组
+//GetIntArray 获取整形数组
 func GetIntArray(key string) []int {
 	s := p.Get(key)
 	array := strings.Split(s, ",")
@@ -128,19 +127,19 @@ func GetIntArray(key string) []int {
 	for k, v := range array {
 		r[k], err = strconv.Atoi(v)
 		if err != nil {
-			log.Error("Parse Int Array Error,key = ", key, err)
+			log.Errorf("couldn't get key(%s) value, %v", key, err)
 		}
 	}
 	return r
 }
 
-//获取整形数组
+//GetStringArray 获取整形数组
 func GetStringArray(key string) []string {
 	s := p.Get(key)
 	return strings.Split(s, ",")
 }
 
-//判断appkey是否在白名单
+//CheckAppKey 判断appkey是否在白名单
 func CheckAppKey(appkey string) bool {
 	s := p.Get("appkey.list")
 	array := strings.Split(s, ",")

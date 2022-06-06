@@ -1,4 +1,3 @@
-///mongodb管理接口封装
 package mgo
 
 import (
@@ -18,7 +17,7 @@ type MongoDBClient struct {
 	dbName *string
 }
 
-//创建一个mongodb客户端
+//NewMongoClient 创建一个mongodb客户端
 func NewMongoClient(address string, timeout, maxsize, idletime int) (*MongoDBClient, error) {
 	clientOptions := options.Client()
 	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
@@ -49,14 +48,14 @@ func NewMongoClient(address string, timeout, maxsize, idletime int) (*MongoDBCli
 	return mongoClient, nil
 }
 
-//提供一个修改数据库名称的接口
+//SetDatabaseName 提供一个修改数据库名称的接口
 func (c *MongoDBClient) SetDatabaseName(dbName *string) {
 	c.dbName = dbName
 }
 
 //======================
 
-//插入一条记录
+//InsertOne 插入一条记录
 func (c *MongoDBClient) InsertOne(colName *string, document interface{}) (interface{}, error) {
 	collection := c.Database(*c.dbName).Collection(*colName)
 	insertResult, err := collection.InsertOne(context.TODO(), document)
@@ -69,7 +68,7 @@ func (c *MongoDBClient) InsertOne(colName *string, document interface{}) (interf
 	return insertResult.InsertedID, nil
 }
 
-//插入多条记录
+//InsertMany 插入多条记录
 func (c *MongoDBClient) InsertMany(colName *string, documents []interface{}) ([]interface{}, error) {
 	collection := c.Database(*c.dbName).Collection(*colName)
 	insertManyResult, err := collection.InsertMany(context.TODO(), documents)
@@ -82,7 +81,7 @@ func (c *MongoDBClient) InsertMany(colName *string, documents []interface{}) ([]
 	return insertManyResult.InsertedIDs, err
 }
 
-//按照条件删除
+//Delete 按照条件删除
 func (c *MongoDBClient) Delete(colName *string, key bson.M) (int64, error) {
 	col := c.Database(*c.dbName).Collection(*colName)
 	deleteResult, err := col.DeleteMany(context.TODO(), key)
@@ -97,7 +96,7 @@ func (c *MongoDBClient) Delete(colName *string, key bson.M) (int64, error) {
 
 //======================
 
-//更新数据
+//Update 更新数据
 func (c *MongoDBClient) Update(colName *string, filter bson.M, update bson.M) (int64, int64, error) {
 	col := c.Database(*c.dbName).Collection(*colName)
 	updateResult, err := col.UpdateMany(context.TODO(), filter, update)
@@ -110,14 +109,14 @@ func (c *MongoDBClient) Update(colName *string, filter bson.M, update bson.M) (i
 	return updateResult.MatchedCount, updateResult.ModifiedCount, nil
 }
 
-//根据条件只查询一条
+//SelectOne 根据条件只查询一条
 func (c *MongoDBClient) SelectOne(colName *string, filter bson.M, v interface{}) error {
 	col := c.Database(*c.dbName).Collection(*colName)
 	selectResult := col.FindOne(context.TODO(), filter)
 	return selectResult.Decode(v)
 }
 
-//根据条件查询
+//Select 根据条件查询
 func (c *MongoDBClient) Select(colName *string, key bson.M, max int64) ([]bson.M, error) {
 	col := c.Database(*c.dbName).Collection(*colName)
 

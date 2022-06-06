@@ -1,4 +1,3 @@
-///自定义error异常封装
 package ept
 
 import (
@@ -6,7 +5,7 @@ import (
 	"runtime/debug"
 )
 
-//自定义错误类型
+//Error 自定义错误类型
 type Error struct {
 	Code    uint32 //错误代码采用1000-9999整形
 	Message string //消息的说明

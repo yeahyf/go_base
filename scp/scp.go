@@ -1,4 +1,3 @@
-///scp接口封装
 package scp
 
 import (
@@ -11,21 +10,23 @@ import (
 	"time"
 
 	"github.com/yeahyf/go_base/log"
+	"github.com/yeahyf/go_base/utils"
 
 	"github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"
 )
 
-//不使用密码，使用密钥
-func ScpFileForKey(host, localFilePath, remoteDir, user, key string, port int) error {
+//FileScpForKey 不使用密码，使用密钥
+func FileScpForKey(host, localFilePath, remoteDir, user, key string, port int) error {
 	return scpFile(host, localFilePath, remoteDir, user, "", key, port)
 }
 
-//host 主机ip地址 localFilePath 本地文件路径 remoteDir远程路径,兼容老的方法
-func ScpFile(host, localFilePath, remoteDir, user, passwd string, port int) error {
+//FileScp host 主机ip地址 localFilePath 本地文件路径 remoteDir远程路径,兼容老的方法
+func FileScp(host, localFilePath, remoteDir, user, passwd string, port int) error {
 	return scpFile(host, localFilePath, remoteDir, user, passwd, "", port)
 }
 
+//scpFile
 func scpFile(host, localFilePath, remoteDir, user, passwd, key string, port int) error {
 	// 这里换成实际的 SSH 连接的 用户名，密码，主机名或IP，SSH端口
 	sftpClient, err := sftpConnect(user, passwd, host, key, port)
@@ -33,15 +34,16 @@ func scpFile(host, localFilePath, remoteDir, user, passwd, key string, port int)
 		log.Error(err)
 		return err
 	}
-	defer sftpClient.Close()
+	defer utils.CloseAction(sftpClient)
 
 	// 用来测试的本地文件路径 和 远程机器上的文件夹
-	srcFile, err := os.Open(localFilePath)
+	var srcFile *os.File
+	srcFile, err = os.Open(localFilePath)
 	if err != nil {
 		log.Error(err)
 		return err
 	}
-	defer srcFile.Close()
+	defer utils.CloseAction(srcFile)
 
 	var remoteFileName = path.Base(localFilePath)
 	dstFile, err := sftpClient.Create(path.Join(remoteDir, remoteFileName))
@@ -49,21 +51,21 @@ func scpFile(host, localFilePath, remoteDir, user, passwd, key string, port int)
 		log.Error(err)
 		return err
 	}
-	defer dstFile.Close()
+	defer utils.CloseAction(dstFile)
 
 	_, err = io.Copy(dstFile, srcFile)
 	if err != nil {
 		log.Error(err)
-		log.Errorf("Copy File to %s path: %s  Failed!", host, remoteDir)
+		log.Errorf("couldn't copy file to %s, %s", host, remoteDir)
 		return err
 	}
 	if log.IsDebug() {
-		log.Debugf("Copy File to %s path: %s  Success!", host, remoteDir)
+		log.Debugf("copy file to %s, %s success!", host, remoteDir)
 	}
 	return nil
 }
 
-//构建一个SSH客户端
+//sshClient 构建一个SSH客户端
 func sshClient(user, password, host, key string, port int, cipherList []string) (*ssh.Client, error) {
 	var (
 		auth         []ssh.AuthMethod
@@ -98,7 +100,8 @@ func sshClient(user, password, host, key string, port int, cipherList []string) 
 
 	if len(cipherList) == 0 {
 		config = ssh.Config{
-			Ciphers: []string{"aes128-ctr", "aes192-ctr", "aes256-ctr", "aes128-gcm@openssh.com", "arcfour256", "arcfour128", "aes128-cbc", "3des-cbc", "aes192-cbc", "aes256-cbc"},
+			Ciphers: []string{"aes128-ctr", "aes192-ctr", "aes256-ctr", "aes128-gcm@openssh.com",
+				"arcfour256", "arcfour128", "aes128-cbc", "3des-cbc", "aes192-cbc", "aes256-cbc"},
 		}
 	} else {
 		config = ssh.Config{
@@ -116,7 +119,7 @@ func sshClient(user, password, host, key string, port int, cipherList []string) 
 		},
 	}
 
-	// connet to ssh
+	//connect to ssh
 	addr = fmt.Sprintf("%s:%d", host, port)
 
 	if client, err = ssh.Dial("tcp", addr, clientConfig); err != nil {
@@ -125,15 +128,18 @@ func sshClient(user, password, host, key string, port int, cipherList []string) 
 	return client, nil
 }
 
-//构建一个SSH的终端会话
+//sshSession 构建一个SSH的终端会话
 func sshSession(user, password, host, key string, port int) (*ssh.Session, error) {
-	client, err := sshClient(user, password, host, key, port, nil)
+	var client *ssh.Client
+	var err error
+	client, err = sshClient(user, password, host, key, port, nil)
 	if err != nil {
 		return nil, err
 	}
 
 	// create session
-	session, err := client.NewSession()
+	var session *ssh.Session
+	session, err = client.NewSession()
 	if err != nil {
 		return nil, err
 	}
@@ -145,10 +151,9 @@ func sshSession(user, password, host, key string, port int) (*ssh.Session, error
 		ssh.TTY_OP_OSPEED: 14400, // output speed = 14.4kbaud
 	}
 
-	if err := session.RequestPty("xterm", 80, 40, modes); err != nil {
+	if err = session.RequestPty("xterm", 80, 40, modes); err != nil {
 		return nil, err
 	}
-
 	return session, nil
 }
 
