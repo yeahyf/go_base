@@ -1,4 +1,3 @@
-///特定的http处理工具
 package httputil
 
 import (
@@ -6,7 +5,6 @@ import (
 	"compress/gzip"
 	"crypto/sha1"
 	"fmt"
-	"github.com/yeahyf/go_base/cfg"
 	"io"
 	"net/http"
 	"reflect"
@@ -14,20 +12,21 @@ import (
 	"strings"
 	"time"
 
+	"github.com/yeahyf/go_base/cfg"
+	"github.com/yeahyf/go_base/utils"
+
 	"github.com/yeahyf/go_base/cache"
 	"github.com/yeahyf/go_base/crypto"
 	"github.com/yeahyf/go_base/ept"
 	"github.com/yeahyf/go_base/immut"
 	"github.com/yeahyf/go_base/log"
 	"github.com/yeahyf/go_base/strutil"
-
-	"github.com/gogo/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 )
 
 const (
-	HeadContentType     = "Content-Type"
 	HeadContentEncoding = "Content-Encoding"
-	HeadXVesion         = "X-Version"
+	HeadXVersion        = "X-Version"
 	HeadXNonce          = "X-Nonce"
 	HeadXTimestamp      = "X-Timestamp"
 	HeadXSignature      = "X-Signature"
@@ -37,8 +36,6 @@ const (
 	EncodingType        = "gzip"
 	HeadXAppKey         = "X-AppKey"
 
-	CtProtobuf    = "application/x-protobuf"
-	CtJson        = "application/json"
 	HeadUserAgent = "User-Agent"
 )
 
@@ -47,22 +44,23 @@ type CommonCache struct {
 	WriteCache *cache.RedisPool
 }
 
-func HttpReqHandle(w http.ResponseWriter, r *http.Request, commonCache *CommonCache, pb proto.Message) bool {
+func HttpReqHandle(w http.ResponseWriter, r *http.Request,
+	commonCache *CommonCache, pb proto.Message) bool {
 	postData, err := ReqHeadHandle(r, commonCache)
 	if err != nil {
-		ExRespHandle(w, err)
+		ExceptionRespHandle(w, err)
 		return false
 	}
 
 	err = proto.Unmarshal(postData, pb)
-
 	if err != nil {
-		log.Errorf("Proto Unmarshal Exception type = %s info = %s !!!"+reflect.TypeOf(pb).Name(), err)
+		log.Errorf("proto couldn't unmarshal type = %s info = %v"+
+			reflect.TypeOf(pb).Name(), err)
 		aErr := &ept.Error{
 			Code:    immut.CodeExProtobufUn,
-			Message: "Unmarshal Error!!!",
+			Message: "unmarshal error!!!",
 		}
-		ExRespHandle(w, aErr)
+		ExceptionRespHandle(w, aErr)
 		return false
 	}
 	if log.IsDebug() {
@@ -71,37 +69,37 @@ func HttpReqHandle(w http.ResponseWriter, r *http.Request, commonCache *CommonCa
 	return true
 }
 
-///对http请求进行通用处理
+//ReqHeadHandle 从Http请求中获取上报数据，只支持Post
 func ReqHeadHandle(r *http.Request, commonCache *CommonCache) ([]byte, error) {
 	// 对请求方法做判断
 	if r.Method != HttpPost {
 		return nil, &ept.Error{
 			Code:    immut.CodeExHttpMethod,
-			Message: "Req Method Error!!!",
+			Message: "only support post method",
 		}
 	}
 
 	//判断请求头信息
-	version := r.Header.Get(HeadXVesion)
-	if version == immut.BlankString {
+	version := r.Header.Get(HeadXVersion)
+	if version == immut.Blank {
 		return nil, &ept.Error{
 			Code:    immut.CodeExVersion,
-			Message: "Req Head Version is NULL Error!!!",
+			Message: "couldn't read head x-version",
 		}
 	}
 
 	if ver, err := strconv.ParseFloat(version, 32); err != nil {
 		return nil, &ept.Error{
 			Code:    immut.CodeExVersion,
-			Message: "Req Head Version Error!!!",
+			Message: "x-version error",
 		}
 	} else if ver >= 2.0 { //判断版本大于等于2.0 开启appkey白名单校验
 		//appkey不能为空
 		appkey := r.Header.Get(HeadXAppKey)
-		if appkey == immut.BlankString {
+		if appkey == immut.Blank {
 			return nil, &ept.Error{
 				Code:    immut.CodeExAppKey,
-				Message: "Req Head AppKey is NULL Error!!!",
+				Message: "could read req head appkey",
 			}
 		}
 
@@ -109,37 +107,35 @@ func ReqHeadHandle(r *http.Request, commonCache *CommonCache) ([]byte, error) {
 		if !cfg.CheckAppKey(appkey) {
 			return nil, &ept.Error{
 				Code:    immut.CodeExAppKey,
-				Message: "Req Head AppKey not publish Error!!!",
+				Message: "req appkey not publish",
 			}
 		}
 	}
 
 	nonce := r.Header.Get(HeadXNonce)
-	if nonce == immut.BlankString {
+	if nonce == immut.Blank {
 		return nil, &ept.Error{
 			Code:    immut.CodeExNonce,
-			Message: "Req Head Nonce Error!!!",
+			Message: "couldn't req head nonce",
 		}
 	}
 
 	timestamp := r.Header.Get(HeadXTimestamp)
-	if timestamp == immut.BlankString {
+	if timestamp == immut.Blank {
 		return nil, &ept.Error{
 			Code:    immut.CodeExTs,
-			Message: "Req Head Timestamp Error!!!",
+			Message: "couldn't read req head ts",
 		}
 	}
 
 	signature := r.Header.Get(HeadXSignature)
-	if signature == immut.BlankString {
+	if signature == immut.Blank {
 		return nil, &ept.Error{
 			Code:    immut.CodeExSignature,
-			Message: "Req Head Signature Error!!!",
+			Message: "couldn't read head signature",
 		}
 	}
-
 	encoding := r.Header.Get(HeadContentEncoding)
-
 	if log.IsDebug() {
 		//从nginx转发过来的ip地址
 		addr := r.Header.Get(HeadIp)
@@ -159,7 +155,6 @@ func ReqHeadHandle(r *http.Request, commonCache *CommonCache) ([]byte, error) {
 
 	//获取post的数据
 	buffer := getPostData(r)
-	//postData, err := ioutil.ReadAll(r.Body)
 	postDataMD5 := crypto.MD54Bytes(buffer.Bytes())
 	l := make([]string, 0, 3)
 	l = append(l, *postDataMD5)
@@ -175,25 +170,23 @@ func ReqHeadHandle(r *http.Request, commonCache *CommonCache) ([]byte, error) {
 	builder.WriteString(l[2])
 	source := builder.String()
 	if log.IsDebug() {
-		log.Debugf("Befor Sginatrue str = %s", source)
+		log.Debugf("before signature str = %s", source)
 	}
 
 	//对数据进行SHA1摘要处理
 	h := sha1.New()
-	io.WriteString(h, source)
+	_, _ = io.WriteString(h, source)
 	Signature := fmt.Sprintf("%x", h.Sum(nil))
 	h = nil
-	//builder.Reset()
 
 	if log.IsDebug() {
-		log.Debugf("After Singature str = %s", Signature)
+		log.Debugf("after signature str = %s", Signature)
 	}
-
 	//对比摘要
 	if Signature != signature {
 		return nil, &ept.Error{
 			Code:    immut.CodeExSignature,
-			Message: "Signatrue Data Error!!!",
+			Message: "signature data error!",
 		}
 	}
 
@@ -202,16 +195,16 @@ func ReqHeadHandle(r *http.Request, commonCache *CommonCache) ([]byte, error) {
 	if err != nil {
 		return nil, &ept.Error{
 			Code:    immut.CodeExTs,
-			Message: "Timestampt format Error!!!",
+			Message: "ts format Error!!!",
 		}
 	}
 	tm := time.Unix(ts, 0)
 	//超过3分钟,过期请求
 	duration := time.Now().Sub(tm)
-	if duration > time.Duration(3*time.Minute) {
+	if duration > 3*time.Minute {
 		return nil, &ept.Error{
 			Code:    immut.CodeExTs,
-			Message: "Timestampt duration Error!!! duration=" + duration.String(),
+			Message: "ts duration error!!! duration=" + duration.String(),
 		}
 	}
 
@@ -231,26 +224,22 @@ func ReqHeadHandle(r *http.Request, commonCache *CommonCache) ([]byte, error) {
 			}
 		} else { //说明里边没有值
 			value := ""
-			commonCache.WriteCache.SetValue(&nonce, &value, 5*60) //180秒
+			_ = commonCache.WriteCache.SetValue(&nonce, &value, 5*60) //180秒
 		}
 	}
-
 	//无压缩
 	if encoding != EncodingType {
 		return buffer.Bytes(), nil
 	}
-
-	gzipReader, err := gzip.NewReader(buffer)
+	var gzipReader *gzip.Reader
+	gzipReader, err = gzip.NewReader(buffer)
 	if err != nil {
 		return nil, &ept.Error{
 			Code:    immut.CodeExReadIO,
-			Message: "Gunzip Error!!!" + err.Error(),
+			Message: "couldn't gunzip data" + err.Error(),
 		}
 	}
-	defer gzipReader.Close()
-
-	//return ioutil.ReadAll(gzipReader)
-	//return postData
+	defer utils.CloseAction(gzipReader)
 	//========================================
 	var buf bytes.Buffer
 	compressSize := buffer.Len()
@@ -276,7 +265,7 @@ func ReqHeadHandle(r *http.Request, commonCache *CommonCache) ([]byte, error) {
 			}
 			return nil, &ept.Error{
 				Code:    immut.CodeExReadIO,
-				Message: "Read Gzip Error!!!" + err.Error(),
+				Message: "couldn't read gzip data" + err.Error(),
 			}
 		}
 		//读取到的数据如果不满，不一定代表结束
@@ -287,45 +276,44 @@ func ReqHeadHandle(r *http.Request, commonCache *CommonCache) ([]byte, error) {
 		}
 		buf.Write(p)
 	}
-	//io.Copy(&buf, reader)
-	//postData, err := ioutil.ReadAll(gzipReader)
 	postData := buf.Bytes()
 	return postData, nil
 }
 
 func getPostData(r *http.Request) *bytes.Buffer {
 	//拿到数据就关闭掉
-	defer r.Body.Close()
+	defer utils.CloseAction(r.Body)
+
 	length := r.ContentLength
 	var b bytes.Buffer
 	b.Grow(int(length))
-	io.Copy(&b, r.Body)
+	_, _ = io.Copy(&b, r.Body)
 	return &b
 }
 
 func HttpRespHandle(w http.ResponseWriter, pb proto.Message) {
 	if log.IsDebug() {
-		log.Debugf("Resp = %s", pb)
+		log.Debugf("resp = %s", pb)
 	}
-
 	result, err := proto.Marshal(pb)
 	if err != nil {
 		aErr := &ept.Error{
 			Code:    immut.CodeExProtobufMa,
-			Message: "Protobuf Ma Failed!!!",
+			Message: "proto couldn't marshal",
 		}
-		ExRespHandle(w, aErr)
+		ExceptionRespHandle(w, aErr)
 		return
 	}
-	w.Write(result)
+	_, _ = w.Write(result)
 }
 
-//像客户端输出错误信息
-func ExRespHandle(w http.ResponseWriter, err error) {
+//ExceptionRespHandle 向客户端输出错误信息
+func ExceptionRespHandle(w http.ResponseWriter, err error) {
 	w.Header().Add(HeadServerEx, "1")
 	var resp proto.Message
 	if eptError, ok := err.(*ept.Error); ok {
-		log.Error("Code="+strconv.Itoa(int(eptError.Code)), ", Info="+eptError.Message)
+		log.Errorf("Code=%s,%s",
+			strconv.Itoa(int(eptError.Code)), eptError.Message)
 		resp = &ept.ErrorResponse{
 			Code: err.(*ept.Error).Code,
 			Info: err.(*ept.Error).Message,
@@ -335,8 +323,8 @@ func ExRespHandle(w http.ResponseWriter, err error) {
 			Code: 1,
 			Info: err.Error(),
 		}
-		log.Error("Info=" + err.Error())
+		log.Errorf("Info=%v", err.Error())
 	}
 	data, _ := proto.Marshal(resp)
-	w.Write(data)
+	_, _ = w.Write(data)
 }

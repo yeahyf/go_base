@@ -1,12 +1,15 @@
 module github.com/yeahyf/go_base
 
-go 1.17
+go 1.18
 
 require (
-	github.com/aws/aws-sdk-go v1.40.50
+	github.com/aws/aws-sdk-go-v2 v1.16.4
+	github.com/aws/aws-sdk-go-v2/config v1.15.9
+	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.11.14
+	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.15.5
+	github.com/aws/aws-sdk-go-v2/service/s3 v1.26.10
 	github.com/go-sql-driver/mysql v1.6.0
 	github.com/gogo/protobuf v1.3.2
-	github.com/golang/protobuf v1.5.2
 	github.com/gomodule/redigo v1.8.6
 	github.com/jlaffaye/ftp v0.0.0-20210307004419-5d4190119067
 	github.com/lestrrat/go-file-rotatelogs v0.0.0-20180223000712-d3151e2a480f
@@ -15,10 +18,26 @@ require (
 	go.mongodb.org/mongo-driver v1.7.2
 	go.uber.org/zap v1.19.1
 	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
+	google.golang.org/protobuf v1.28.0
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
 )
 
 require (
+	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.4.1 // indirect
+	github.com/aws/aws-sdk-go-v2/credentials v1.12.4 // indirect
+	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.12.5 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/configsources v1.1.11 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.4.5 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/ini v1.3.12 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/v4a v1.0.2 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.9.1 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.1.6 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/endpoint-discovery v1.7.5 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.9.5 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.13.5 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sso v1.11.7 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sts v1.16.6 // indirect
+	github.com/aws/smithy-go v1.11.2 // indirect
 	github.com/fastly/go-utils v0.0.0-20180712184237-d95a45783239 // indirect
 	github.com/fatih/color v1.10.0 // indirect
 	github.com/go-stack/stack v1.8.0 // indirect
@@ -43,5 +62,4 @@ require (
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
 	golang.org/x/sys v0.0.0-20210615035016-665e8c7367d1 // indirect
 	golang.org/x/text v0.3.6 // indirect
-	google.golang.org/protobuf v1.26.0 // indirect
 )

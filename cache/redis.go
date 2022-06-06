@@ -1,12 +1,13 @@
-/// 提供Redis的基本管理接口
 package cache
 
 import (
 	"errors"
 	"fmt"
+	"io"
 	"time"
 
 	"github.com/gomodule/redigo/redis"
+	"github.com/yeahyf/go_base/log"
 
 	"github.com/yeahyf/go_base/immut"
 )
@@ -31,7 +32,7 @@ type RedisPool struct {
 	DBIndex     int
 }
 
-//构建新的Redis连接池
+//NewRedisPoolByDB 构建新的Redis连接池
 func NewRedisPoolByDB(init, maxsize, idle int, address, password string, dbIndex int) *RedisPool {
 	redisPool := &redis.Pool{
 		//实例化一个连接池
@@ -40,17 +41,17 @@ func NewRedisPoolByDB(init, maxsize, idle int, address, password string, dbIndex
 		Wait:        true,                              //没有连接可用需要等待
 		IdleTimeout: time.Second * time.Duration(idle), //连接关闭时间 300秒 （300秒不使用自动关闭）
 		Dial: func() (redis.Conn, error) { //要连接的redis数据库
-			if password == immut.BlankString {
+			if password == immut.Blank {
 				c, err := redis.Dial("tcp", address)
 				if err != nil {
-					fmt.Println("Create Connection Error!")
+					fmt.Println("couldn't create conn")
 					return nil, err
 				}
 				return c, nil
 			} else {
 				c, err := redis.Dial("tcp", address, redis.DialPassword(password))
 				if err != nil {
-					fmt.Println("Create Connection Error!")
+					fmt.Println("couldn't create conn")
 					return nil, err
 				}
 				return c, nil
@@ -63,26 +64,28 @@ func NewRedisPoolByDB(init, maxsize, idle int, address, password string, dbIndex
 	}
 }
 
-//构建新的Redis连接池
+//NewRedisPool 构建新的Redis连接池，放入默认的0号DB中
 func NewRedisPool(init, maxsize, idle int, address, password string) *RedisPool {
 	return NewRedisPoolByDB(init, maxsize, idle, address, password, 0) //默认选择0号库
 }
 
-// SetValueForDBIdx  expire的单位为秒 dbIdx 为所使用的DB的索引(默认0-15)
+//SetValueForDBIdx expire的单位为秒 dbIdx 为所使用的DB的索引(默认0-15)
 func (p *RedisPool) SetValueForDBIdx(key *string, value *string, expire, dbIdx int) error {
 	c := p.Get()
 	if c == nil {
 		return errors.New("get redis conn error")
 	}
-	defer c.Close()
+	defer CloseAction(c)
 
-	c.Send(Multi)
-	c.Send(Select, dbIdx)
+	//使用Send发送指令到缓存区
+	RedisSend(c, Multi)
+	RedisSend(c, Select, dbIdx)
 	if expire > 0 {
-		_ = c.Send(SetEx, *key, expire, *value)
+		RedisSend(c, SetEx, *key, expire, *value)
 	} else {
-		_ = c.Send(Set, *key, *value)
+		RedisSend(c, Set, *key, *value)
 	}
+	//使用Do命令执行缓存区的命令
 	_, err := c.Do(Exec)
 	return err
 }
@@ -93,11 +96,11 @@ func (p *RedisPool) DeleteValueForDBIdx(key *string, dbIdx int) (int, error) {
 	if c == nil {
 		return 0, errors.New("get redis conn error")
 	}
-	defer c.Close() //函数运行结束 ，把连接放回连接池
+	defer CloseAction(c) //函数运行结束 ，把连接放回连接池
 
-	c.Send(Multi)
-	c.Send(Select, dbIdx)
-	c.Send(DEL, *key)
+	RedisSend(c, Multi)
+	RedisSend(c, Select, dbIdx)
+	RedisSend(c, DEL, *key)
 
 	replay, err := redis.Values(c.Do(Exec))
 	if err != nil {
@@ -112,19 +115,20 @@ func (p *RedisPool) GetValueForDBIdx(key *string, dbIdx int) (*string, error) {
 	if c == nil {
 		return nil, errors.New("can not get redis conn")
 	}
-	defer c.Close() //函数运行结束 ，把连接放回连接池
+	defer CloseAction(c) //函数运行结束 ，把连接放回连接池
 
-	c.Send("MULTI")
-	c.Send("SELECT", dbIdx)
-	c.Send(Get, *key)
-	replay, err := redis.Values(c.Do("EXEC"))
+	RedisSend(c, Multi)
+	RedisSend(c, Select, dbIdx)
+	RedisSend(c, Get, *key)
+
+	replay, err := redis.Values(c.Do(Exec))
 	if err != nil {
 		return nil, err
 	}
 	var value string
 	value, err = redis.String(replay[1], err)
 	if err != nil {
-		if err ==  redis.ErrNil {
+		if err == redis.ErrNil {
 			return nil, nil
 		} else {
 			return nil, err
@@ -140,7 +144,7 @@ func (p *RedisPool) SetValue(key *string, value *string, expire int) error {
 		if c == nil {
 			return errors.New("get redis conn error")
 		}
-		defer c.Close()
+		defer CloseAction(c)
 
 		var err error
 		if expire > 0 {
@@ -160,21 +164,21 @@ func (p *RedisPool) DeleteValue(key *string) (int, error) {
 		if c == nil {
 			return 0, errors.New("get redis conn error")
 		}
-		defer c.Close()
+		defer CloseAction(c)
 
 		return redis.Int(c.Do(DEL, *key))
 	}
 	return p.DeleteValueForDBIdx(key, p.DBIndex)
 }
 
-//从Redis中获取指定的值
+//GetValue 从Redis中获取指定的值
 func (p *RedisPool) GetValue(key *string) (*string, error) {
 	if p.DBIndex == 0 {
 		c := p.Get()
 		if c == nil {
 			return nil, errors.New("get redis conn error")
 		}
-		defer c.Close() //函数运行结束 ，把连接放回连接池
+		defer CloseAction(c) //函数运行结束 ，把连接放回连接池
 
 		replay, err := redis.String(c.Do(Get, *key))
 		//说明没有值
@@ -194,7 +198,7 @@ func (p *RedisPool) MGetValue(keys []string) ([]string, error) {
 	if c == nil {
 		return nil, errors.New("get redis conn error")
 	}
-	defer c.Close() //函数运行结束 ，把连接放回连接池
+	defer CloseAction(c) //函数运行结束 ，把连接放回连接池
 
 	s := make([]interface{}, len(keys))
 	for i, v := range keys {
@@ -214,13 +218,32 @@ func (p *RedisPool) SetExpire(key *string, expire int) error {
 	if c == nil {
 		return errors.New("get redis conn error")
 	}
-	defer c.Close() //函数运行结束 ，把连接放回连接池
+	defer CloseAction(c) //函数运行结束 ，把连接放回连接池
 
 	_, err := c.Do(Expire, *key, expire)
 	return err
 }
 
-//方便连接池在系统退出的时候也能够优雅的退出
+//CloseRedisPool 方便连接池在系统退出的时候也能够优雅的退出
 func (p *RedisPool) CloseRedisPool() {
-	p.Close()
+	CloseAction(p)
+}
+
+func CloseAction(c io.Closer) {
+	err := c.Close()
+	if err != nil {
+		log.Errorf("couldn't close %v", err)
+	}
+}
+
+type Send interface {
+	Send(commandName string, args ...interface{}) error
+}
+
+func RedisSend(s Send, action string, args ...interface{}) {
+	err := s.Send(action)
+	if err != nil {
+		log.Errorf("couldn't exec redis %s, param %v, %v",
+			action, args, err)
+	}
 }

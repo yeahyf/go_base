@@ -1,5 +1,8 @@
 syntax = "proto3";
 package ept;
+
+option go_package="go_base/ept";
+
 message ErrorResponse {
     uint32 code = 1;
     string info = 2;
