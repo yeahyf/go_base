@@ -10,7 +10,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/smallnest/rpcx/log"
-	"github.com/yeahyf/go_base/cfg"
 )
 
 //BigStorageItem 数据对象封装
@@ -43,7 +42,7 @@ func NewS3Client(profile string, region string, bucketName string) {
 	}
 	s3Cfg, err := config.LoadDefaultConfig(context.Background(),
 		config.WithSharedConfigProfile(profile),
-		config.WithRegion(cfg.GetString(region)))
+		config.WithRegion(region))
 	if err != nil {
 		log.Errorf("couldn't create aws s3 cfg! %v", err)
 		panic(err)

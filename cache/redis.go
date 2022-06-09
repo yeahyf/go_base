@@ -241,7 +241,13 @@ type Send interface {
 }
 
 func RedisSend(s Send, action string, args ...interface{}) {
-	err := s.Send(action)
+	var err error
+	if len(args) > 0 {
+		//注意此处args的写法,args是切片,不是可变参数
+		err = s.Send(action, args...)
+	} else {
+		err = s.Send(action)
+	}
 	if err != nil {
 		log.Errorf("couldn't exec redis %s, param %v, %v",
 			action, args, err)

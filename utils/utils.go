@@ -9,6 +9,6 @@ import (
 func CloseAction(c io.Closer) {
 	err := c.Close()
 	if err != nil {
-		log.Errorf("close resource err!", err)
+		log.Errorf("close resource err: %v", err)
 	}
 }
