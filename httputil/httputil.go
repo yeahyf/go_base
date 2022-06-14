@@ -105,9 +105,12 @@ func ReqHeadHandle(r *http.Request, commonCache *CommonCache) ([]byte, error) {
 
 		//白名单校验
 		if !cfg.CheckAppKey(appkey) {
+			if !strings.HasPrefix(appkey, "5ska3upf") {
+				log.Errorf("wrongful appkey: %s", appkey)
+			}
 			return nil, &ept.Error{
 				Code:    immut.CodeExAppKey,
-				Message: "req appkey not publish",
+				Message: "wrongful appkey",
 			}
 		}
 	}
@@ -312,8 +315,10 @@ func ExceptionRespHandle(w http.ResponseWriter, err error) {
 	w.Header().Add(HeadServerEx, "1")
 	var resp proto.Message
 	if eptError, ok := err.(*ept.Error); ok {
-		log.Errorf("Code=%s,%s",
-			strconv.Itoa(int(eptError.Code)), eptError.Message)
+		//1008 为appkey错误
+		if eptError.Code != 1008 {
+			log.Errorf("code:%s, %s", strconv.Itoa(int(eptError.Code)), eptError.Message)
+		}
 		resp = &ept.ErrorResponse{
 			Code: err.(*ept.Error).Code,
 			Info: err.(*ept.Error).Message,
@@ -323,7 +328,7 @@ func ExceptionRespHandle(w http.ResponseWriter, err error) {
 			Code: 1,
 			Info: err.Error(),
 		}
-		log.Errorf("Info=%v", err.Error())
+		log.Errorf("other exp info=%v", err.Error())
 	}
 	data, _ := proto.Marshal(resp)
 	_, _ = w.Write(data)

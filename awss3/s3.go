@@ -83,7 +83,7 @@ func (client S3Client) DownloadObject(item *BigStorageItem) error {
 	})
 
 	if err != nil {
-		log.Errorf("couldn't upload data to s3 %v", err)
+		log.Errorf("couldn't download data %v,key=%s", err, *item.Key)
 	}
 	return err
 }
