@@ -68,8 +68,8 @@ func (client S3Client) UpdateObject(items []*BigStorageItem) error {
 		})
 		if err != nil {
 			log.Errorf("couldn't upload data to s3 %v", err)
+			return err
 		}
-		return err
 	}
 	return nil
 }
