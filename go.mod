@@ -1,6 +1,6 @@
 module github.com/yeahyf/go_base
 
-go 1.18
+go 1.19
 
 require (
 	github.com/aws/aws-sdk-go-v2 v1.16.4
@@ -63,4 +63,3 @@ require (
 	golang.org/x/sys v0.0.0-20211216021012-1d35b9e2eb4e // indirect
 	golang.org/x/text v0.3.7 // indirect
 )
-

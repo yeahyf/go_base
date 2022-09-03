@@ -6,61 +6,66 @@ import (
 
 //var key = "zset1"
 
-func TestSetGetDelete(t *testing.T) {
-	p := NewRedisPool(1, 2, 30, "127.0.0.1:6379", "")
+func TestSingle(t *testing.T) {
+	p := NewRedisPoolByDB(1, 2, 30, "127.0.0.1:6379", "", 10)
 
 	key := "01_1"
 	value := "aslkdjfalsdfkj"
 
-	err := p.SetValue(&key, &value, 0)
+	err := p.SetValue(key, value, 0)
 	if err != nil {
 		t.Fail()
 	}
-	var v *string
-	v, err = p.GetValue(&key)
+	var v string
+	v, err = p.GetValue(key)
 	if err != nil {
 		t.Fail()
 	}
-	if v!=nil && *v != value {
+	if v != value {
 		t.Fail()
 	}
 
 	var result int
-	result, err = p.DeleteValue(&key)
+	result, err = p.DeleteValue(key)
 	if err != nil {
 		t.Fail()
 	}
 	if result != 1 {
 		t.Fail()
 	}
+	p.CloseRedisPool()
 }
 
+func TestMulti(t *testing.T) {
+	p := NewRedisPoolByDB(1, 2, 30, "127.0.0.1:6379", "", 10)
 
-func TestMultiSetGetDelete(t *testing.T) {
-	p := NewRedisPool(1, 2, 30, "127.0.0.1:6379", "")
-
-	key := "01_2"
-	value := "aslkdjfalsdfkj"
-
-	err := p.SetValueForDBIdx (&key, &value, 0,3)
+	keys := []string{"01_1", "01_2", "01_3", "01_4", "01_5"}
+	targets := []string{"01_1", "v_1", "01_2", "v_2", "01_3", "v_3", "01_4", "v_4", "01_5", "v_5"}
+	s := make([]interface{}, 0, len(targets))
+	for _, v := range targets {
+		s = append(s, v)
+	}
+	err := p.MSetValue(s)
 	if err != nil {
 		t.Fail()
 	}
-	var v *string
-	v, err = p.GetValueForDBIdx(&key,3)
-	if err != nil {
-		t.Fail()
-	}
-	if v!= nil && *v != value {
-		t.Fail()
-	}
+	p.MSetExpire(keys, 60)
 
-	var result int
-	result, err = p.DeleteValueForDBIdx(&key,3)
+	p.CloseRedisPool()
+}
+
+func TestMultiWithExpire(t *testing.T) {
+	p := NewRedisPoolByDB(1, 2, 30, "127.0.0.1:6379", "", 10)
+
+	//keys := []string{"01_1", "01_2", "01_3", "01_4", "01_5"}
+	targets := []string{"01_1", "v_1", "01_2", "v_2", "01_3", "v_3", "01_4", "v_4", "01_5", "v_5"}
+	s := make([]interface{}, 0, len(targets))
+	for _, v := range targets {
+		s = append(s, v)
+	}
+	err := p.MSetValueWithExpire(s, 60)
 	if err != nil {
 		t.Fail()
 	}
-	if result != 1 {
-		t.Fail()
-	}
+	p.CloseRedisPool()
 }
