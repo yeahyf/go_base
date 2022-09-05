@@ -27,6 +27,6 @@ func (v Version) Debug() {
 	if log.IsDebug() {
 		log.Debug(time.Now().Format("2006-01-02 15:04:05"))
 		log.Debug("["+v.SystemName+"]", "Start ...")
-		log.Debug(v.BuildTime, "System Build! Ver: ", v.VerNo)
+		log.Debug(v.BuildTime, " System Build! Ver: ", v.VerNo)
 	}
 }
