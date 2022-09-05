@@ -11,7 +11,7 @@ import (
 	"github.com/yeahyf/go_base/log"
 )
 
-// 以下方法是一种对错误统一处理的封装
+// Wrapper 以下方法是一种对错误统一处理的封装
 type Wrapper func(w http.ResponseWriter, r *http.Request) (proto.Message, error)
 
 func Handler(httpWrapper Wrapper) func(w http.ResponseWriter, r *http.Request) {
@@ -25,7 +25,7 @@ func Handler(httpWrapper Wrapper) func(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-//像客户端输出错误信息
+// ExRespHandler 像客户端输出错误信息
 func ExRespHandler(w http.ResponseWriter, err error) {
 	log.Error("Code="+strconv.Itoa(int(err.(*ept.Error).Code)), ", Info="+err.(*ept.Error).Message)
 	w.Header().Add(HeadServerEx, "1")
@@ -37,7 +37,7 @@ func ExRespHandler(w http.ResponseWriter, err error) {
 	w.Write(data)
 }
 
-///组合处理
+// ReqHandle 组合处理
 func ReqHandle(w *http.ResponseWriter, r *http.Request, commonCache *CommonCache, pb proto.Message) error {
 	postData, err := ReqHeadHandle(r, commonCache)
 	if err != nil {

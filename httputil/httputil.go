@@ -69,7 +69,7 @@ func HttpReqHandle(w http.ResponseWriter, r *http.Request,
 	return true
 }
 
-//ReqHeadHandle 从Http请求中获取上报数据，只支持Post
+// ReqHeadHandle 从Http请求中获取上报数据，只支持Post
 func ReqHeadHandle(r *http.Request, commonCache *CommonCache) ([]byte, error) {
 	// 对请求方法做判断
 	if r.Method != HttpPost {
@@ -213,21 +213,21 @@ func ReqHeadHandle(r *http.Request, commonCache *CommonCache) ([]byte, error) {
 
 	if commonCache != nil {
 		//nonce
-		value, err := commonCache.ReadCache.GetValue(&nonce)
+		value, err := commonCache.ReadCache.GetValue(nonce)
 		if err != nil {
 			return nil, &ept.Error{
 				Code:    immut.CodeExRedis,
 				Message: "Read Redis Data Error!!!",
 			}
 		}
-		if value != nil { //存在值，说明已经提交过了
+		if value != "" { //存在值，说明已经提交过了
 			return nil, &ept.Error{
 				Code:    immut.CodeExRepeatReq,
 				Message: "Req Repeat Error!!!",
 			}
 		} else { //说明里边没有值
 			value := ""
-			_ = commonCache.WriteCache.SetValue(&nonce, &value, 5*60) //180秒
+			_ = commonCache.WriteCache.SetValue(nonce, value, 5*60) //180秒
 		}
 	}
 	//无压缩
@@ -310,7 +310,7 @@ func HttpRespHandle(w http.ResponseWriter, pb proto.Message) {
 	_, _ = w.Write(result)
 }
 
-//ExceptionRespHandle 向客户端输出错误信息
+// ExceptionRespHandle 向客户端输出错误信息
 func ExceptionRespHandle(w http.ResponseWriter, err error) {
 	w.Header().Add(HeadServerEx, "1")
 	var resp proto.Message
