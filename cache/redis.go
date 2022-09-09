@@ -20,6 +20,8 @@ const (
 	MGet = "MGET"
 	MSet = "MSET"
 
+	HGetAll = "HGETALL"
+
 	Expire = "EXPIRE"
 	SetEx  = "SETEX"
 
@@ -153,60 +155,42 @@ func (p *RedisPool) GetValueWithDbIdx(key string, dbIdx int) (string, error) {
 	return value, err
 }
 
-// SetValue 用法：Set("key", val, 60)，其中 expire 的单位为秒
-//func (p *RedisPool) SetValue(key *string, value *string, expire int) error {
-//	if p.DBIndex == 0 {
-//		c := p.Get()
-//		if c == nil {
-//			return errors.New("get redis conn error")
-//		}
-//		defer CloseAction(c)
-//
-//		var err error
-//		if expire > 0 {
-//			_, err = c.Do(SetEx, *key, expire, *value)
-//		} else {
-//			_, err = c.Do(Set, *key, *value)
-//		}
-//		return err
-//	}
-//	return p.SetValueForDBIdx(key, value, expire, p.DBIndex)
-//}
+// HGetAllValue 从Redis中获取指定的值
+func (p *RedisPool) HGetAllValue(key string) ([]string, error) {
+	return p.HGetValueWithDbIdx(key, p.DBIndex)
+}
 
-//DeleteValue 删除值,默认为dbIdx库中的
-//func (p *RedisPool) DeleteValue(key *string) (int, error) {
-//	if p.DBIndex == 0 {
-//		c := p.Get()
-//		if c == nil {
-//			return 0, errors.New("get redis conn error")
-//		}
-//		defer CloseAction(c)
-//
-//		return redis.Int(c.Do(DEL, *key))
-//	}
-//	return p.DeleteValueForDBIdx(key, p.DBIndex)
-//}
+// HGetValueWithDbIdx 从Redis中获取指定的值
+func (p *RedisPool) HGetValueWithDbIdx(key string, dbIdx int) ([]string, error) {
+	c := p.Get()
+	if c == nil {
+		return nil, errors.New("can not get redis conn")
+	}
+	defer CloseAction(c) //函数运行结束 ，把连接放回连接池
 
-//GetValue 从Redis中获取指定的值
-//func (p *RedisPool) GetValue(key *string) (*string, error) {
-//	if p.DBIndex == 0 {
-//		c := p.Get()
-//		if c == nil {
-//			return nil, errors.New("get redis conn error")
-//		}
-//		defer CloseAction(c) //函数运行结束 ，把连接放回连接池
-//
-//		replay, err := redis.String(c.Do(Get, *key))
-//		//说明没有值
-//		if err == redis.ErrNil {
-//			return nil, nil
-//		} else if err != nil {
-//			return nil, err
-//		}
-//		return &replay, nil
-//	}
-//	return p.GetValueForDBIdx(key, p.DBIndex)
-//}
+	RedisSend(c, Multi)
+	RedisSend(c, Select, dbIdx)
+	RedisSend(c, HGetAll, key)
+
+	replay, err := redis.Values(c.Do(Exec))
+	if err != nil {
+		return nil, err
+	}
+	var value []string
+	value, err = redis.Strings(replay[1], err)
+	if err != nil {
+		if err == redis.ErrNil {
+			return nil, nil
+		} else {
+			return nil, err
+		}
+	}
+	//如果长度为0,说明没有值
+	if len(value) == 0 {
+		return nil, nil
+	}
+	return value, err
+}
 
 // MGetValue 一次性获取多个Key的值
 func (p *RedisPool) MGetValue(keys []interface{}) ([]string, error) {
@@ -225,11 +209,22 @@ func (p *RedisPool) MGetValueWithDbIdx(keys []interface{}, dbIdx int) ([]string,
 	RedisSend(c, Select, dbIdx)
 	RedisSend(c, MGet, keys...)
 
-	replay, err := redis.Strings(c.Do(Exec))
+	replay, err := redis.Values(c.Do(Exec))
 	if err != nil {
 		return nil, err
 	}
-	return replay, nil
+	var value []string
+	value, err = redis.Strings(replay[1], err)
+	if err != nil {
+		if err == redis.ErrNil {
+			return nil, nil
+		} else {
+			return nil, err
+		}
+	}
+	//有可能都没有值,但是返回值仍旧会封装成slice
+	//需要判断slice里边的具体的值
+	return value, err
 }
 
 // MSetValue 批量设置

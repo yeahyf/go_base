@@ -69,3 +69,19 @@ func TestMultiWithExpire(t *testing.T) {
 	}
 	p.CloseRedisPool()
 }
+
+func TestMultiGetWithExpire(t *testing.T) {
+	p := NewRedisPoolByDB(1, 2, 30, "127.0.0.1:6379", "", 10)
+
+	slice := make([]interface{}, 0, 3)
+	slice = append(slice, "123")
+	slice = append(slice, "456")
+	slice = append(slice, "789")
+
+	result, err := p.MGetValue(slice)
+	if err != nil {
+		t.Fail()
+	}
+	t.Log(result)
+	p.CloseRedisPool()
+}

@@ -3,6 +3,8 @@ package ver
 import (
 	"fmt"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/yeahyf/go_base/log"
@@ -29,4 +31,13 @@ func (v Version) Debug() {
 		log.Debug("["+v.SystemName+"]", "Start ...")
 		log.Debug(v.BuildTime, " System Build! Ver: ", v.VerNo)
 	}
+}
+
+func (v Version) Clean(clear func()) {
+	notify := make(chan os.Signal, 1)
+	signal.Notify(notify, os.Interrupt, syscall.SIGTERM, syscall.SIGKILL)
+	go func() {
+		<-notify
+		clear()
+	}()
 }
