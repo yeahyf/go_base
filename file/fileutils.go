@@ -17,13 +17,13 @@ import (
 	"github.com/yeahyf/go_base/utils"
 )
 
-//ExistFile 判断文件是否存在或者不是文件,返回true表示文件存在，false标识不存在
+// ExistFile 判断文件是否存在或者不是文件,返回true表示文件存在，false标识不存在
 func ExistFile(filePath string) bool {
 	fInfo, err := os.Stat(filePath)
 	return err == nil && !fInfo.IsDir()
 }
 
-//ExistsPath 判断目录是否存在,返回true表示存在,false表示不存在
+// ExistsPath 判断目录是否存在,返回true表示存在,false表示不存在
 func ExistsPath(path string) (bool, error) {
 	_, err := os.Stat(path)
 	if err == nil {
@@ -35,7 +35,7 @@ func ExistsPath(path string) (bool, error) {
 	return false, err
 }
 
-//CopyFile 拷贝文件  要拷贝的文件路径 拷贝到哪里
+// CopyFile 拷贝文件  要拷贝的文件路径 拷贝到哪里
 func CopyFile(source, dest string) (int64, error) {
 	if source == "" || dest == "" {
 		return 0, fmt.Errorf("%s or %s is illegle", source, dest)
@@ -80,7 +80,22 @@ func CopyFile(source, dest string) (int64, error) {
 	return io.Copy(destFile, sourceFile)
 }
 
-//ReadLine 逐行读取文本文件进行处理
+// PreparePath 检查目录是否存在，不存在就创建
+func PreparePath(pathName string) bool {
+	if ok, err := ExistsPath(pathName); err != nil {
+		log.Error("io: check path error", pathName, err)
+		return false
+	} else if ok {
+		return true
+	}
+	if err := os.MkdirAll(pathName, os.ModePerm); err != nil {
+		log.Error("io: make path error", pathName, err)
+		return false
+	}
+	return true
+}
+
+// ReadLine 逐行读取文本文件进行处理
 func ReadLine(fileName string, handler func(*string)) error {
 	f, err := os.Open(fileName)
 	if err != nil {
@@ -107,8 +122,8 @@ func ReadLine(fileName string, handler func(*string)) error {
 	}
 }
 
-//Compress 压缩文件
-//原始地址，目标地址
+// Compress 压缩文件
+// 原始地址，目标地址
 func Compress(srcFile, destFile *string) error {
 	//创建目标文件
 	var newFile *os.File
@@ -150,7 +165,7 @@ func Compress(srcFile, destFile *string) error {
 	return nil
 }
 
-//SHA1File 计算文件的sha1值
+// SHA1File 计算文件的sha1值
 func SHA1File(filePath string) string {
 	file, err := os.Open(filePath)
 	if err != nil {
@@ -166,7 +181,7 @@ func SHA1File(filePath string) string {
 	return hex.EncodeToString(m.Sum(nil))
 }
 
-//FtpFile 使用ftp进行文件传输，注意需要对ftp服务器进行适当的配置
+// FtpFile 使用ftp进行文件传输，注意需要对ftp服务器进行适当的配置
 func FtpFile(destHost, sourceFilePath, destPath, destFileName, user, passwd string) error {
 	//建立连接
 	c, err := ftp.Dial(destHost, ftp.DialWithTimeout(5*time.Second))

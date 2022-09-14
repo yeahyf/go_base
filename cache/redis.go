@@ -98,6 +98,32 @@ func (p *RedisPool) SetValueWithDbIdx(key string, value string, expire, dbIdx in
 	return err
 }
 
+// DeleteValues 删除多个key dbIdx 为所使用的DB的索引(默认0-15)
+func (p *RedisPool) DeleteValues(keys []string) (int, error) {
+	return p.DeleteValuesWithDbIdx(keys, p.DBIndex)
+}
+
+// DeleteValuesWithDbIdx 删除多个key dbIdx 为所使用的DB的索引(默认0-15)
+func (p *RedisPool) DeleteValuesWithDbIdx(keys []string, dbIdx int) (int, error) {
+	c := p.Get()
+	if c == nil {
+		return 0, errors.New("get redis conn error")
+	}
+	defer CloseAction(c) //函数运行结束 ，把连接放回连接池
+
+	RedisSend(c, Multi)
+	RedisSend(c, Select, dbIdx)
+	for _, key := range keys {
+		RedisSend(c, DEL, key)
+	}
+
+	replay, err := redis.Values(c.Do(Exec))
+	if err != nil {
+		return 0, err
+	}
+	return redis.Int(replay[1], err)
+}
+
 // DeleteValue 删除一个key dbIdx 为所使用的DB的索引(默认0-15)
 func (p *RedisPool) DeleteValue(key string) (int, error) {
 	return p.DeleteValueWithDbIdx(key, p.DBIndex)

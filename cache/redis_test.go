@@ -85,3 +85,20 @@ func TestMultiGetWithExpire(t *testing.T) {
 	t.Log(result)
 	p.CloseRedisPool()
 }
+
+func TestDeleteValues(t *testing.T) {
+	p := NewRedisPoolByDB(1, 2, 30, "127.0.0.1:6379", "", 10)
+
+	keys := make([]string, 0, 3)
+	keys = append(keys, "a")
+	keys = append(keys, "b")
+	keys = append(keys, "c")
+
+	_, err := p.DeleteValues(keys)
+
+	if err != nil {
+		t.Fail()
+	}
+
+	p.CloseRedisPool()
+}
