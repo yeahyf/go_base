@@ -6,6 +6,20 @@ import (
 
 //var key = "zset1"
 
+func BenchmarkKey(b *testing.B) {
+	p := NewRedisPoolByDB(1, 2, 30, "127.0.0.1:6379", "", 10)
+	for i := 0; i < b.N; i++ {
+		key := "01_1"
+		value := "aslkdjfalsdfkj"
+
+		err := p.SetValue(key, value, 0)
+		if err != nil {
+			b.Fail()
+		}
+	}
+
+}
+
 func TestSingle(t *testing.T) {
 	p := NewRedisPoolByDB(1, 2, 30, "127.0.0.1:6379", "", 10)
 
