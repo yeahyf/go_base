@@ -18,3 +18,8 @@ func Test_Set2(t *testing.T) {
 		t.Log(k)
 	}
 }
+
+func Test_GetInt64FromBytes(t *testing.T) {
+	bytes := []byte{'1', '2', '3', '8', '8', '2', '9', '9', '0'}
+	t.Log(GetInt64FromBytes(bytes))
+}

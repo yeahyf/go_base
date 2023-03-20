@@ -1,6 +1,6 @@
 package log
 
-//格式化为debug,info,error三种日志信息
+//格式化为debug,info,warn,error四种日志信息
 //并做了部分固定的设定处理
 
 import (
@@ -34,7 +34,7 @@ const (
 	LevelWarn  = "warn"
 )
 
-//LevelConfig 日志配置结构体
+// LevelConfig 日志配置结构体
 type LevelConfig struct {
 	Filename   string `json:"logpath"`
 	MaxSize    int    `json:"maxsize"`
@@ -48,21 +48,21 @@ type LevelConfig struct {
 	Rotation int `json:"rotation"`
 }
 
-//Config 完整配置
+// Config 完整配置
 type Config struct {
 	Logs  []LevelConfig `json:"logs"`
 	Level string        `json:"level"`
 }
 
-//ShortConfig 级别配置
+// ShortConfig 级别配置
 type ShortConfig struct {
 	Level string `json:"level"`
 }
 
-//SetLogConf 将json数据读取出来并进行初始化
+// SetLogConf 将json数据读取出来并进行初始化
 func SetLogConf(configFile *string) {
 	logConfigFile = *configFile
-	data, err := ioutil.ReadFile(logConfigFile)
+	data, err := os.ReadFile(logConfigFile)
 	if err != nil {
 		panic(err)
 	}
@@ -83,7 +83,7 @@ func SetLogConf(configFile *string) {
 	}
 }
 
-//SetLevel 动态修改系统的日志级别
+// SetLevel 动态修改系统的日志级别
 func SetLevel(level string) {
 	switch level {
 	case LevelDebug:
@@ -101,7 +101,7 @@ func IsDebug() bool {
 	return atom.Enabled(zapcore.DebugLevel)
 }
 
-//initConfig 对日志模块进行初始化
+// initConfig 对日志模块进行初始化
 func initConfig(config *Config) {
 	SetLevel(config.Level)
 	for _, logConfig := range config.Logs {
@@ -119,7 +119,7 @@ func initConfig(config *Config) {
 	go reSetLevel() //定时处理
 }
 
-//reSetLevel 读取json中的level配置，并重新设置 实现动态修改log的级别
+// reSetLevel 读取json中的level配置，并重新设置 实现动态修改log的级别
 func reSetLevel() {
 	for {
 		time.Sleep(time.Second * 30)
@@ -140,7 +140,7 @@ func reSetLevel() {
 	}
 }
 
-//initLogger 初始化具体的日志对象
+// initLogger 初始化具体的日志对象
 func initLogger(logConfig *LevelConfig) (logger *zap.Logger) {
 	var hook io.Writer
 	logPath := path.Dir(logConfig.Filename)
@@ -161,9 +161,9 @@ func initLogger(logConfig *LevelConfig) (logger *zap.Logger) {
 		hook = &lumberLog
 	} else {
 		var err error
-		hook ,err = initRotateLog(logConfig)
-		if err != nil{
-			fmt.Println("Init Log Error",err)
+		hook, err = initRotateLog(logConfig)
+		if err != nil {
+			fmt.Println("Init Log Error", err)
 			panic(err)
 		}
 	}
@@ -231,35 +231,35 @@ func initRotateLog(logConfig *LevelConfig) (io.Writer, error) {
 	return hook, err
 }
 
-//Debug 输出日志
+// Debug 输出日志
 func Debug(msg ...interface{}) {
 	info := fmt.Sprint(msg...)
 	debugLog.Debug(fmt.Sprintf("%s", info))
 }
 
-//Debugf 按照格式输出日志
+// Debugf 按照格式输出日志
 func Debugf(format string, msg ...interface{}) {
 	debugLog.Debug(fmt.Sprintf(format, msg...))
 }
 
-//Info 输出日志
+// Info 输出日志
 func Info(msg ...interface{}) {
 	info := fmt.Sprint(msg...)
 	infoLog.Info(fmt.Sprintf("%s", info))
 }
 
-//Infof 按照格式输出日志
+// Infof 按照格式输出日志
 func Infof(format string, msg ...interface{}) {
 	infoLog.Info(fmt.Sprintf(format, msg...))
 }
 
-//Error 输出日志
+// Error 输出日志
 func Error(msg ...interface{}) {
 	info := fmt.Sprint(msg...)
 	errorLog.Error(fmt.Sprintf("%s", info))
 }
 
-//Errorf 按照格式输出日志
+// Errorf 按照格式输出日志
 func Errorf(format string, msg ...interface{}) {
 	errorLog.Error(fmt.Sprintf(format, msg...))
 }

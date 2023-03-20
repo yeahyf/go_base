@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"io"
-	"io/ioutil"
+	"os"
 	"strconv"
 	"strings"
 
@@ -13,12 +13,12 @@ import (
 
 var p *Properties
 
-//Properties 构建存储对象
+// Properties 构建存储对象
 type Properties struct {
 	values map[string]string
 }
 
-//NewProperties 创建新的存储对象
+// NewProperties 创建新的存储对象
 func NewProperties() *Properties {
 	p := &Properties{
 		values: make(map[string]string),
@@ -26,7 +26,7 @@ func NewProperties() *Properties {
 	return p
 }
 
-//Load 加载方法
+// Load 加载方法
 func (p *Properties) Load(r io.Reader) error {
 	buf := bufio.NewReader(r)
 	for {
@@ -72,9 +72,9 @@ func (p *Properties) Get(key string) string {
 
 //=============================================
 
-//Load 加载配置函数
+// Load 加载配置函数
 func Load(configPath *string) {
-	data, err := ioutil.ReadFile(*configPath)
+	data, err := os.ReadFile(*configPath)
 	if err != nil {
 		panic(err)
 	}
@@ -82,12 +82,12 @@ func Load(configPath *string) {
 	err = p.Load(bytes.NewReader(data))
 }
 
-//GetString 获取字符串
+// GetString 获取字符串
 func GetString(key string) string {
 	return p.Get(key)
 }
 
-//GetInt 获取整形
+// GetInt 获取整形
 func GetInt(key string) int {
 	s := p.Get(key)
 	value, err := strconv.Atoi(s)
@@ -108,7 +108,7 @@ func GetInt64(key string) int64 {
 	return value
 }
 
-//GetBool 获取布尔型
+// GetBool 获取布尔型
 func GetBool(key string) bool {
 	value, err := strconv.ParseBool(p.Get(key))
 	if err != nil {
@@ -118,7 +118,7 @@ func GetBool(key string) bool {
 	return value
 }
 
-//GetIntArray 获取整形数组
+// GetIntArray 获取整形数组
 func GetIntArray(key string) []int {
 	s := p.Get(key)
 	array := strings.Split(s, ",")
@@ -133,13 +133,13 @@ func GetIntArray(key string) []int {
 	return r
 }
 
-//GetStringArray 获取整形数组
+// GetStringArray 获取整形数组
 func GetStringArray(key string) []string {
 	s := p.Get(key)
 	return strings.Split(s, ",")
 }
 
-//CheckAppKey 判断appkey是否在白名单
+// CheckAppKey 判断appkey是否在白名单
 func CheckAppKey(appkey string) bool {
 	s := p.Get("appkey.list")
 	array := strings.Split(s, ",")

@@ -5,8 +5,8 @@ import (
 	"strconv"
 
 	"github.com/yeahyf/go_base/immut"
+	"google.golang.org/protobuf/proto"
 
-	"github.com/gogo/protobuf/proto"
 	"github.com/yeahyf/go_base/ept"
 	"github.com/yeahyf/go_base/log"
 )
