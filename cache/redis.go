@@ -28,6 +28,9 @@ const (
 	Exec   = "EXEC"
 )
 
+var getConnErr = errors.New("get redis conn error")
+var valueErr = errors.New("get redis data exception")
+
 type RedisPool struct {
 	*redis.Pool //创建redis连接池
 	DBIndex     int
@@ -74,7 +77,7 @@ func NewRedisPool(init, maxsize, idle int, address, password string) *RedisPool 
 func (p *RedisPool) SetValue(key string, value string, expire int) error {
 	c := p.Get()
 	if c == nil {
-		return errors.New("get redis conn error")
+		return getConnErr
 	}
 	defer CloseAction(c)
 
@@ -95,7 +98,7 @@ func (p *RedisPool) SetValue(key string, value string, expire int) error {
 func (p *RedisPool) DeleteValue(key string) (int, error) {
 	c := p.Get()
 	if c == nil {
-		return 0, errors.New("get redis conn error")
+		return 0, getConnErr
 	}
 	defer CloseAction(c) //函数运行结束 ，把连接放回连接池
 
@@ -114,7 +117,7 @@ func (p *RedisPool) DeleteValue(key string) (int, error) {
 func (p *RedisPool) GetValue(key string) (string, error) {
 	c := p.Get()
 	if c == nil {
-		return "", errors.New("can not get redis conn")
+		return "", getConnErr
 	}
 	defer CloseAction(c) //函数运行结束 ，把连接放回连接池
 
@@ -197,7 +200,7 @@ func (p *RedisPool) GetValue(key string) (string, error) {
 func (p *RedisPool) MGetValue(keys []interface{}) ([]string, error) {
 	c := p.Get()
 	if c == nil {
-		return nil, errors.New("get redis conn error")
+		return nil, getConnErr
 	}
 	defer CloseAction(c) //函数运行结束 ，把连接放回连接池
 
@@ -216,7 +219,7 @@ func (p *RedisPool) MGetValue(keys []interface{}) ([]string, error) {
 func (p *RedisPool) MSetValue(kv []interface{}) error {
 	c := p.Get()
 	if c == nil {
-		return errors.New("get redis conn error")
+		return getConnErr
 	}
 	defer CloseAction(c) //函数运行结束 ，把连接放回连接池
 
@@ -235,7 +238,7 @@ func (p *RedisPool) MSetValue(kv []interface{}) error {
 func (p *RedisPool) SetExpire(key string, expire int) error {
 	c := p.Get()
 	if c == nil {
-		return errors.New("get redis conn error")
+		return getConnErr
 	}
 	defer CloseAction(c) //函数运行结束 ，把连接放回连接池
 
@@ -252,7 +255,7 @@ func (p *RedisPool) SetExpire(key string, expire int) error {
 func (p *RedisPool) MSetValueWithExpire(kv []interface{}, expire int) error {
 	c := p.Get()
 	if c == nil {
-		return errors.New("get redis conn error")
+		return getConnErr
 	}
 	defer CloseAction(c) //函数运行结束 ，把连接放回连接池
 
@@ -276,7 +279,7 @@ func (p *RedisPool) MSetValueWithExpire(kv []interface{}, expire int) error {
 func (p *RedisPool) MSetExpire(keys []string, expire int) error {
 	c := p.Get()
 	if c == nil {
-		return errors.New("get redis conn error")
+		return getConnErr
 	}
 	defer CloseAction(c) //函数运行结束 ，把连接放回连接池
 
