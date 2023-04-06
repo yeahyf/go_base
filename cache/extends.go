@@ -15,6 +15,8 @@ const (
 	WITHSCORES      = "WITHSCORES"
 	ZCARD           = "ZCARD"
 	ZREMRANGEBYRANK = "ZREMRANGEBYRANK"
+	ZRANGEBYSCORE   = "ZRANGEBYSCORE"
+	ZREM            = "ZREM"
 	HSET            = "HSET"
 	HMSET           = "HMSET"
 	HDEL            = "HDEL"
@@ -247,6 +249,121 @@ func (p *RedisPool) ZRangeWithScore(key string, start, stop uint32) ([]string, [
 
 func (p *RedisPool) ZRevRangeWithScore(key string, start, stop uint32) ([]string, []float64, error) {
 	return p.zFetchWithScore(key, start, stop, true)
+}
+
+// ZRangeByScore 根据最大最小值获取列表
+func (p *RedisPool) ZRangeByScore(key string, min, max float64) ([]string, error) {
+	c := p.Get()
+	if c == nil {
+		return nil, getConnErr
+	}
+	defer CloseAction(c)
+	//使用Do命令执行缓存区的命令
+
+	RedisSend(c, Multi)
+	RedisSend(c, Select, p.DBIndex)
+	RedisSend(c, ZRANGEBYSCORE, key, min, max)
+
+	value, err := redis.Values(c.Do(Exec))
+	if err != nil {
+		if err == redis.ErrNil {
+			return nil, nil
+		} else {
+			return nil, err
+		}
+	}
+	if len(value) == 2 {
+		if source, ok := value[1].([]interface{}); ok {
+			f := make([]string, 0, len(source))
+			for _, v := range source {
+				if v, ok := v.([]uint8); ok {
+					field := string(v)
+					f = append(f, field)
+				}
+			}
+			return f, nil
+		}
+	}
+	return nil, valueErr
+}
+
+// ZRangeByScoreWithScore 根据最大最小值获取列表（带分数）
+func (p *RedisPool) ZRangeByScoreWithScore(key string, min, max float64) ([]string, []float64, error) {
+	c := p.Get()
+	if c == nil {
+		return nil, nil, getConnErr
+	}
+	defer CloseAction(c)
+	//使用Do命令执行缓存区的命令
+
+	RedisSend(c, Multi)
+	RedisSend(c, Select, p.DBIndex)
+	RedisSend(c, ZRANGEBYSCORE, key, min, max, WITHSCORES)
+
+	value, err := redis.Values(c.Do(Exec))
+	if err != nil {
+		if err == redis.ErrNil {
+			return nil, nil, nil
+		} else {
+			return nil, nil, err
+		}
+	}
+	if len(value) == 2 {
+		if source, ok := value[1].([]interface{}); ok {
+			length := len(source)
+			f := make([]string, 0, length/2)
+			s := make([]float64, 0, length/2)
+			for i := 0; i < length; i += 2 {
+				var field string
+				var score float64
+				if v, ok := source[i].([]uint8); ok {
+					field = string(v)
+				}
+				if v, ok := source[i+1].([]uint8); ok {
+					temp, err := strconv.ParseFloat(string(v), 64)
+					if err == nil {
+						score = temp
+					}
+				}
+				if field != "" {
+					f = append(f, field)
+					s = append(s, score)
+				}
+			}
+			return f, s, nil
+		}
+	}
+	return nil, nil, valueErr
+}
+
+// ZRem 根据key进行删除,返回删除的数量
+func (p *RedisPool) ZRem(key string, fields ...string) (int64, error) {
+	c := p.Get()
+	if c == nil {
+		return 0, getConnErr
+	}
+	defer CloseAction(c)
+	//使用Do命令执行缓存区的命令
+
+	RedisSend(c, Multi)
+	RedisSend(c, Select, p.DBIndex)
+	args := make([]interface{}, 0, len(fields)+1)
+	args = append(args, key)
+	for _, field := range fields {
+		args = append(args, field)
+	}
+	RedisSend(c, ZREM, args...)
+
+	value, err := redis.Values(c.Do(Exec))
+	if err != nil {
+		return 0, err
+	}
+	if len(value) == 2 {
+		if source, ok := value[1].(int64); ok {
+			return source, nil
+		}
+	}
+	return 0, valueErr
 }
 
 // ZCard 获取有序集合成员个数

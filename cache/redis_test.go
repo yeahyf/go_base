@@ -7,7 +7,41 @@ import (
 var p *RedisPool
 
 func initPool() {
-	p = NewRedisPoolByDB(1, 2, 30, "127.0.0.1:6379", "", 10)
+	p = NewRedisPoolByDB(1, 2, 30, "127.0.0.1:6379", "", 0)
+}
+
+func TestZRem(t *testing.T) {
+	initPool()
+	key := "web:uv"
+	value, err := p.ZRem(key, "www.sina.com", "www.baidu.com")
+	if err != nil {
+		t.Fail()
+	} else {
+		t.Log(value)
+	}
+}
+
+func TestZRangeByScore(t *testing.T) {
+	initPool()
+	key := "salary"
+	value, err := p.ZRangeByScore(key, 3000, 4000)
+	if err != nil {
+		t.Fail()
+	} else {
+		t.Log(value)
+	}
+}
+
+func TestZRangeByScoreWithScore(t *testing.T) {
+	initPool()
+	key := "salary"
+	f, s, err := p.ZRangeByScoreWithScore(key, 3000, 4000)
+	if err != nil {
+		t.Fail()
+	} else {
+		t.Log(f)
+		t.Log(s)
+	}
 }
 
 func TestLPush(t *testing.T) {
