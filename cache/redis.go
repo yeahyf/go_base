@@ -50,14 +50,14 @@ func NewRedisPoolByDB(init, maxsize, idle int, address, password string, dbIndex
 			if password == immut.Blank {
 				c, err := redis.Dial("tcp", address)
 				if err != nil {
-					fmt.Println("couldn't create conn")
+					fmt.Println("couldn't create conn ", err)
 					return nil, err
 				}
 				return c, nil
 			} else {
 				c, err := redis.Dial("tcp", address, redis.DialPassword(password))
 				if err != nil {
-					fmt.Println("couldn't create conn")
+					fmt.Println("couldn't create conn ", err)
 					return nil, err
 				}
 				return c, nil
