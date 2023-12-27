@@ -21,6 +21,18 @@ var (
 	RowNotFoundErr   = errors.New("row not found")
 )
 
+// convertError 将TIOError 转为 普通error
+func convertError(err error) error {
+	if err == nil {
+		return nil
+	}
+	var tio *th.TIOError
+	if errors.As(err, &tio) {
+		return errors.New(*tio.Message)
+	}
+	return err
+}
+
 // CreateNameSpace 创建命名空间
 // 如果是已经创建过,返回false,如果查询有异常,就再次创建
 func (hb *ThriftHbaseConn) CreateNameSpace() error {
@@ -32,17 +44,21 @@ func (hb *ThriftHbaseConn) CreateNameSpace() error {
 	//有异常都重新创建
 	err = hb.ServiceClient.CreateNamespace(context.Background(),
 		&th.TNamespaceDescriptor{Name: hb.SpaceName})
-	return err
+	return convertError(err)
 }
 
 // DeleteNameSpace 删除命名空间
 func (hb *ThriftHbaseConn) DeleteNameSpace() error {
-	descriptor, _ := hb.ServiceClient.GetNamespaceDescriptor(context.Background(), hb.SpaceName)
+	descriptor, err := hb.ServiceClient.GetNamespaceDescriptor(context.Background(), hb.SpaceName)
+	if err != nil {
+		return convertError(err)
+	}
 	if descriptor == nil {
 		return NSNotExistErr
 	}
-	// 直接构建
-	return hb.ServiceClient.DeleteNamespace(context.Background(), hb.SpaceName)
+	// 直接删除,注意删除需要所有的表都被删除掉才可以删掉命名空间
+	err = hb.ServiceClient.DeleteNamespace(context.Background(), hb.SpaceName)
+	return convertError(err)
 }
 
 // CreateTable 创建表,不带版本,只存储最新的数据
@@ -74,11 +90,12 @@ func (hb *ThriftHbaseConn) CreateTableWithVer(tableName string, familyNames []st
 				})
 		}
 	}
-	return hb.ServiceClient.CreateTable(context.Background(),
+	err = hb.ServiceClient.CreateTable(context.Background(),
 		&th.TTableDescriptor{
 			TableName: tbName,
 			Columns:   columnFamilyDescriptor,
 		}, nil)
+	return convertError(err)
 }
 
 // DisableTable 停用表
@@ -92,13 +109,13 @@ func (hb *ThriftHbaseConn) DisableTable(tableName string) error {
 			if err == nil && enabled {
 				return hb.ServiceClient.DisableTable(context.Background(), tbName)
 			} else {
-				return err
+				return convertError(err)
 			}
 		} else {
 			return TableNotExistErr
 		}
 	}
-	return err
+	return convertError(err)
 }
 
 // EnableTable 启用表
@@ -112,13 +129,13 @@ func (hb *ThriftHbaseConn) EnableTable(tableName string) error {
 			if err == nil && disabled {
 				return hb.ServiceClient.EnableTable(context.Background(), tbName)
 			} else {
-				return err
+				return convertError(err)
 			}
 		} else {
 			return TableNotExistErr
 		}
 	}
-	return err
+	return convertError(err)
 }
 
 // DeleteTable 删除表 必须要具备的条件，1. 表存在，2 表是disabled
@@ -145,14 +162,14 @@ func (hb *ThriftHbaseConn) DeleteTable(tableName string) error {
 			return TableNotExistErr
 		}
 	}
-	return err
+	return convertError(err)
 }
 
 // ListAllTable 列出空间中所有的表名
 func (hb *ThriftHbaseConn) ListAllTable() ([]string, error) {
 	list, err := hb.ServiceClient.GetTableNamesByNamespace(context.Background(), hb.SpaceName)
 	if err != nil {
-		return nil, err
+		return nil, convertError(err)
 	}
 	tList := make([]string, 0, len(list))
 	for _, v := range list {
@@ -185,7 +202,8 @@ func (hb *ThriftHbaseConn) UpdateRow(tableName, rowKey string, values map[string
 	tbName.WriteString(hb.SpaceName)
 	tbName.WriteByte(':')
 	tbName.WriteString(tableName)
-	return hb.ServiceClient.Put(context.Background(), tbName.Bytes(), tPut)
+	err := hb.ServiceClient.Put(context.Background(), tbName.Bytes(), tPut)
+	return convertError(err)
 }
 
 // FetchRow 获取一条Row
@@ -223,7 +241,7 @@ func (hb *ThriftHbaseConn) FetchRow(tableName, rowKey string, columnKeys map[str
 	tbName.WriteString(tableName)
 	result, err := hb.ServiceClient.Get(context.Background(), tbName.Bytes(), tGet)
 	if err != nil {
-		return nil, err
+		return nil, convertError(err)
 	}
 	m := make(map[string][]byte, len(result.ColumnValues))
 	for _, v := range result.ColumnValues {
@@ -269,7 +287,7 @@ func (hb *ThriftHbaseConn) FetchRowByVer(tableName, rowKey string, columnKeys ma
 	tbName.WriteString(tableName)
 	result, err := hb.ServiceClient.Get(context.Background(), tbName.Bytes(), tGet)
 	if err != nil {
-		return nil, err
+		return nil, convertError(err)
 	}
 	m := make(map[string][]byte, len(result.ColumnValues))
 	for _, v := range result.ColumnValues {
@@ -280,14 +298,28 @@ func (hb *ThriftHbaseConn) FetchRowByVer(tableName, rowKey string, columnKeys ma
 
 // ExistRow 判断某行数据是否存在
 func (hb *ThriftHbaseConn) ExistRow(tableName string, rowKey string) (bool, error) {
-	tGet := &th.TGet{
-		Row: []byte(rowKey),
+	tbName := &th.TTableName{
+		Ns:        []byte(hb.SpaceName),
+		Qualifier: []byte(tableName),
 	}
-	tbName := bytes.Buffer{}
-	tbName.WriteString(hb.SpaceName)
-	tbName.WriteByte(':')
-	tbName.WriteString(tableName)
-	return hb.ServiceClient.Exists(context.Background(), tbName.Bytes(), tGet)
+	exist, err := hb.ServiceClient.TableExists(context.Background(), tbName)
+	if err == nil {
+		if exist {
+			tGet := &th.TGet{
+				Row: []byte(rowKey),
+			}
+			tbName := bytes.Buffer{}
+			tbName.WriteString(hb.SpaceName)
+			tbName.WriteByte(':')
+			tbName.WriteString(tableName)
+			exist, err := hb.ServiceClient.Exists(context.Background(), tbName.Bytes(), tGet)
+			return exist, convertError(err)
+		} else {
+			return false, TableNotExistErr
+		}
+	} else {
+		return false, convertError(err)
+	}
 }
 
 // DeleteRow 删除某行数据
@@ -295,7 +327,7 @@ func (hb *ThriftHbaseConn) DeleteRow(tableName, rowKey string) error {
 	//先判断是否存在再删除
 	exist, err := hb.ExistRow(tableName, rowKey)
 	if err != nil {
-		return err
+		return convertError(err)
 	}
 	//要删除的row不存在
 	if !exist {
@@ -310,7 +342,8 @@ func (hb *ThriftHbaseConn) DeleteRow(tableName, rowKey string) error {
 	tbName.WriteString(hb.SpaceName)
 	tbName.WriteByte(':')
 	tbName.WriteString(tableName)
-	return hb.ServiceClient.DeleteSingle(context.Background(), tbName.Bytes(), tDelete)
+	err = hb.ServiceClient.DeleteSingle(context.Background(), tbName.Bytes(), tDelete)
+	return convertError(err)
 }
 
 // DeleteColumns 删除某些列
@@ -322,7 +355,7 @@ func (hb *ThriftHbaseConn) DeleteColumns(tableName, rowKey string, columnKeys ma
 	//先判断是否存在再删除
 	exist, err := hb.ExistRow(tableName, rowKey)
 	if err != nil {
-		return err
+		return convertError(err)
 	}
 	//要删除的row不存在
 	if !exist {
@@ -353,7 +386,8 @@ func (hb *ThriftHbaseConn) DeleteColumns(tableName, rowKey string, columnKeys ma
 	tbName.WriteString(hb.SpaceName)
 	tbName.WriteByte(':')
 	tbName.WriteString(tableName)
-	return hb.ServiceClient.DeleteSingle(context.Background(), tbName.Bytes(), tDelete)
+	err = hb.ServiceClient.DeleteSingle(context.Background(), tbName.Bytes(), tDelete)
+	return convertError(err)
 }
 
 // IsOpen 是否处于打开状态

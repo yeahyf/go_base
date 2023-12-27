@@ -22,12 +22,12 @@ type Connection interface {
 	CreateNameSpace() error //创建表空间
 	DeleteNameSpace() error //删除表空间
 
-	CreateTable(tableName string, familyNames []string) error                          //创建表
-	CreateTableWithVer(tableName string, familyNames []string, maxVersion int32) error //创建表
-	DisableTable(tableName string) error                                               //停用表
-	EnableTable(tableName string) error                                                //停用表
-	DeleteTable(tableName string) error                                                //删除表
-	ListAllTable() ([]string, error)                                                   //列出所有的表名
+	CreateTable(tableName string, familyNames []string) error                      //创建表
+	CreateTableWithVer(tableName string, familyNames []string, maxVer int32) error //创建表
+	DisableTable(tableName string) error                                           //停用表
+	EnableTable(tableName string) error                                            //停用表
+	DeleteTable(tableName string) error                                            //删除表
+	ListAllTable() ([]string, error)                                               //列出所有的表名
 
 	UpdateRow(tableName, rowKey string, values map[string]map[string][]byte) error                                   //更新存档
 	FetchRow(tableName, rowKey string, columnKeys map[string][]string) (map[string][]byte, error)                    //获取存档
@@ -62,7 +62,7 @@ type ConnectionPool struct {
 	notify      chan struct{}    //获取不到连接时候的通知
 }
 
-func NewConnPool(factory func(url, user, passwd, spaceName string) (Connection, error), conf *PoolConf) *ConnectionPool {
+func newConnPool(factory func(url, user, passwd, spaceName string) (Connection, error), conf *PoolConf) *ConnectionPool {
 	if conf.MaxOpenSize <= 0 {
 		conf.MaxOpenSize = 50
 	}
@@ -91,7 +91,7 @@ func NewConnPool(factory func(url, user, passwd, spaceName string) (Connection, 
 		//如果启动的时候都无法创建连接,说明问题严重
 		if err != nil {
 			cp.Close()
-			panic("error in NewConnPool while calling connFactory")
+			panic("error in newConnPool while calling connFactory")
 		}
 		cp.cons <- &CommonConn{conn: connRes, idleTime: time.Now()} // 连接放入池中
 	}
@@ -113,7 +113,7 @@ func NewConnPool(factory func(url, user, passwd, spaceName string) (Connection, 
 //		if used+idled < cp.conf.MaxOpenSize {
 //			connRes, err := cp.connFactory(cp.conf.Address, cp.conf.User, cp.conf.Passwd)
 //			if err != nil {
-//				log.Errorf("error in NewConnPool while calling connFactory %v", err)
+//				log.Errorf("error in newConnPool while calling connFactory %v", err)
 //				continue
 //			}
 //			if cp.closed {
@@ -147,7 +147,7 @@ func (pool *ConnectionPool) balanceControl() {
 			connRes, err := pool.connFactory(pool.conf.Address,
 				pool.conf.User, pool.conf.Passwd, pool.conf.SpaceName)
 			if err != nil {
-				log.Errorf("error in NewConnPool while calling connFactory %v", err)
+				log.Errorf("error in newConnPool while calling connFactory %v", err)
 				continue
 			}
 			if pool.closed {
@@ -283,22 +283,7 @@ func NewPoolByParam(spaceName, address, user, passwd string, minIdleSize, maxIdl
 
 // NewPoolByCfg 构建一个新的Hbase Connection Pool
 func NewPoolByCfg(poolCfg *PoolConf) *ConnectionPool {
-	//SpaceName = cfg.GetString("hbase.namespace")
-	//if SpaceName == "" {
-	//	panic("hbase namespace not set!!!")
-	//}
-	//poolConf := &PoolConf{
-	//	Address: cfg.GetString("hbase.url.address"),
-	//	User:    cfg.GetString("hbase.user.name"),
-	//	Passwd:  cfg.GetString("hbase.user.passwd"),
-	//
-	//	MinIdleSize: cfg.GetInt("hbase.min.idle.size"),
-	//	MaxIdleSize: cfg.GetInt("hbase.max.idle.size"),
-	//	MaxOpenSize: cfg.GetInt("hbase.max.open.size"),
-	//	MaxIdleTime: time.Duration(cfg.GetInt("hbase.max.idle.time")) * time.Second,
-	//	MaxLifeTime: time.Duration(cfg.GetInt("hbase.max.life.time")) * time.Second,
-	//}
-	return NewConnPool(thriftHBaseConnFactory, poolCfg)
+	return newConnPool(thriftHBaseConnFactory, poolCfg)
 }
 
 func (pool *ConnectionPool) GetConn(ctx context.Context) (Connection, error) {

@@ -12,10 +12,10 @@ import (
 )
 
 const (
-	URL       = "http://ld-8vb1yr869xuausw73-proxy-lindorm-pub.lindorm.rds.aliyuncs.com:9190"
+	URL       = "http://ld-8vb1yr869xuausw73-proxy-lindorm.lindorm.rds.aliyuncs.com:9190"
 	USER      = "root"
 	PASSWORD  = "root"
-	SpaceName = "yifan_test"
+	SpaceName = ""
 )
 
 var (
@@ -41,7 +41,7 @@ func TestCreateNameSpace(t *testing.T) {
 	file := "/Users/yeahyf/workproject/archive_service_system/conf/zap.json"
 	//cfg.Load(&file)
 	log.SetLogConf(&file)
-	pool := NewConnPool(thriftHBaseConnFactory, conf)
+	pool := NewPoolByCfg(conf)
 	defer pool.Close()
 	conn, err := pool.Get(context.Background())
 	if err != nil {
@@ -60,7 +60,7 @@ func TestDeleteNameSpace(t *testing.T) {
 	file := "/Users/yeahyf/workproject/archive_service_system/conf/zap.json"
 	//cfg.Load(&file)
 	log.SetLogConf(&file)
-	pool := NewConnPool(thriftHBaseConnFactory, conf)
+	pool := NewPoolByCfg(conf)
 	defer pool.Close()
 	conn, err := pool.Get(context.Background())
 	if err != nil {
@@ -79,7 +79,7 @@ func TestListAllTable(t *testing.T) {
 	//cfg.Load(&file)
 	//Init()
 	log.SetLogConf(&file)
-	pool := NewConnPool(thriftHBaseConnFactory, conf)
+	pool := NewPoolByCfg(conf)
 	defer pool.Close()
 	conn, err := pool.Get(context.Background())
 	if err != nil {
@@ -99,7 +99,7 @@ func TestCreateTable(t *testing.T) {
 	file := "/Users/yeahyf/workproject/archive_service_system/conf/zap.json"
 	//cfg.Load(&file)
 	log.SetLogConf(&file)
-	pool := NewConnPool(thriftHBaseConnFactory, conf)
+	pool := newConnPool(thriftHBaseConnFactory, conf)
 	defer pool.Close()
 	conn, err := pool.Get(context.Background())
 	if err != nil {
@@ -121,7 +121,7 @@ func TestCreateTableWithVersion(t *testing.T) {
 	file := "/Users/yeahyf/workproject/archive_service_system/conf/zap.json"
 	//cfg.Load(&file)
 	log.SetLogConf(&file)
-	pool := NewConnPool(thriftHBaseConnFactory, conf)
+	pool := NewPoolByCfg(conf)
 	defer pool.Close()
 	conn, err := pool.Get(context.Background())
 	if err != nil {
@@ -130,7 +130,7 @@ func TestCreateTableWithVersion(t *testing.T) {
 	}
 	defer pool.Put(conn)
 
-	tableName := "new_2"
+	tableName := "new_with_version"
 	familys := []string{"a", "e"}
 	err = conn.CreateTableWithVer(tableName, familys, 10)
 	if err != nil {
@@ -143,7 +143,7 @@ func TestDeleteTable(t *testing.T) {
 	file := "/Users/yeahyf/workproject/archive_service_system/conf/zap.json"
 	//cfg.Load(&file)
 	log.SetLogConf(&file)
-	pool := NewConnPool(thriftHBaseConnFactory, conf)
+	pool := newConnPool(thriftHBaseConnFactory, conf)
 	defer pool.Close()
 	conn, err := pool.Get(context.Background())
 	if err != nil {
@@ -164,7 +164,7 @@ func TestFetchRow(t *testing.T) {
 	file := "/Users/yeahyf/workproject/archive_service_system/conf/zap.json"
 	//cfg.Load(&file)
 	log.SetLogConf(&file)
-	pool := NewConnPool(thriftHBaseConnFactory, conf)
+	pool := NewPoolByCfg(conf)
 	defer pool.Close()
 	conn, err := pool.Get(context.Background())
 	if err != nil {
@@ -192,7 +192,7 @@ func TestDeleteRow(t *testing.T) {
 	file := "/Users/yeahyf/workproject/archive_service_system/conf/zap.json"
 	//cfg.Load(&file)
 	log.SetLogConf(&file)
-	pool := NewConnPool(thriftHBaseConnFactory, conf)
+	pool := NewPoolByCfg(conf)
 	defer pool.Close()
 	conn, err := pool.Get(context.Background())
 	if err != nil {
@@ -218,7 +218,7 @@ func TestUpdateRow(t *testing.T) {
 	file := "/Users/yeahyf/workproject/archive_service_system/conf/zap.json"
 	//cfg.Load(&file)
 	log.SetLogConf(&file)
-	pool := NewConnPool(thriftHBaseConnFactory, conf)
+	pool := NewPoolByCfg(conf)
 	defer pool.Close()
 	conn, err := pool.Get(context.Background())
 	if err != nil {
@@ -259,7 +259,7 @@ func TestExistRow(t *testing.T) {
 	file := "/Users/yeahyf/workproject/archive_service_system/conf/zap.json"
 	//cfg.Load(&file)
 	log.SetLogConf(&file)
-	pool := NewConnPool(thriftHBaseConnFactory, conf)
+	pool := NewPoolByCfg(conf)
 	defer pool.Close()
 	conn, err := pool.Get(context.Background())
 	if err != nil {
@@ -268,8 +268,8 @@ func TestExistRow(t *testing.T) {
 	}
 	defer pool.Put(conn)
 
-	tableName := "playcity"
-	rowKey := "2gknb1qvkfu:0"
+	tableName := "new_2"
+	rowKey := "2gknb1qvkfu:2"
 
 	exist, err := conn.ExistRow(tableName, rowKey)
 	if err != nil {
@@ -283,7 +283,7 @@ func TestDeleteColumns(t *testing.T) {
 	file := "/Users/yeahyf/workproject/archive_service_system/conf/zap.json"
 	//cfg.Load(&file)
 	log.SetLogConf(&file)
-	pool := NewConnPool(thriftHBaseConnFactory, conf)
+	pool := NewPoolByCfg(conf)
 	defer pool.Close()
 	conn, err := pool.Get(context.Background())
 	if err != nil {
@@ -314,7 +314,7 @@ func TestFetchRowWithVersion(t *testing.T) {
 	file := "/Users/yeahyf/workproject/archive_service_system/conf/zap.json"
 	//cfg.Load(&file)
 	log.SetLogConf(&file)
-	pool := NewConnPool(thriftHBaseConnFactory, conf)
+	pool := NewPoolByCfg(conf)
 	defer pool.Close()
 	conn, err := pool.Get(context.Background())
 	if err != nil {
