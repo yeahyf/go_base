@@ -66,6 +66,16 @@ func (hb *ThriftHbaseConn) CreateTable(tableName string, familyNames []string) e
 	return hb.CreateTableWithVer(tableName, familyNames, 0)
 }
 
+// ExistTable 判断表是否存在
+func (hb *ThriftHbaseConn) ExistTable(tableName string) (bool, error) {
+	tbName := &th.TTableName{Ns: []byte(hb.SpaceName), Qualifier: []byte(tableName)}
+	result, err := hb.ServiceClient.TableExists(context.Background(), tbName)
+	if err != nil {
+		return false, convertError(err)
+	}
+	return result, nil
+}
+
 // CreateTableWithVer 创建表，增加历史版本，一般情况下是不需要直接调用该接口的
 // maxVersion 可以保留的最多的版本数，每次修改都会生成一个新的版本，并且必须是全部所有字段统一更新
 func (hb *ThriftHbaseConn) CreateTableWithVer(tableName string, familyNames []string, maxVersion int32) error {

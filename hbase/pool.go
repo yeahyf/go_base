@@ -24,6 +24,7 @@ type Connection interface {
 
 	CreateTable(tableName string, familyNames []string) error                      //创建表
 	CreateTableWithVer(tableName string, familyNames []string, maxVer int32) error //创建表
+	ExistTable(tableName string) (bool, error)                                     //表是否存在
 	DisableTable(tableName string) error                                           //停用表
 	EnableTable(tableName string) error                                            //停用表
 	DeleteTable(tableName string) error                                            //删除表

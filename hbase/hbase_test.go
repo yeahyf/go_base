@@ -12,10 +12,10 @@ import (
 )
 
 const (
-	URL       = "http://ld-8vb1yr869xuausw73-proxy-lindorm.lindorm.rds.aliyuncs.com:9190"
+	URL       = "http://ld-8vb1yr869xuausw73-proxy-lindorm-pub.lindorm.rds.aliyuncs.com:9190"
 	USER      = "root"
-	PASSWORD  = "root"
-	SpaceName = ""
+	PASSWORD  = "5OIQb3hs"
+	SpaceName = "ass"
 )
 
 var (
@@ -99,7 +99,7 @@ func TestCreateTable(t *testing.T) {
 	file := "/Users/yeahyf/workproject/archive_service_system/conf/zap.json"
 	//cfg.Load(&file)
 	log.SetLogConf(&file)
-	pool := newConnPool(thriftHBaseConnFactory, conf)
+	pool := NewPoolByCfg(conf)
 	defer pool.Close()
 	conn, err := pool.Get(context.Background())
 	if err != nil {
@@ -114,6 +114,30 @@ func TestCreateTable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 		return
+	}
+}
+
+func TestExistsTable(t *testing.T) {
+	file := "/Users/yeahyf/workproject/archive_service_system/conf/zap.json"
+	//cfg.Load(&file)
+	log.SetLogConf(&file)
+	pool := NewPoolByCfg(conf)
+	defer pool.Close()
+	conn, err := pool.Get(context.Background())
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+	defer pool.Put(conn)
+
+	tableName := "playcity1"
+
+	result, err := conn.ExistTable(tableName)
+	if err != nil {
+		t.Fatal(err)
+		return
+	} else {
+		t.Log(result)
 	}
 }
 
