@@ -10,6 +10,23 @@ func initPool() {
 	p = NewRedisPoolByDB(1, 2, 30, "127.0.0.1:6379", "", 0)
 }
 
+func TestList(t *testing.T) {
+	initPool()
+	key := "web:uv"
+	data := []string{"www.sina.com", "www.baidu.com"}
+	err := p.LPush(key, data...)
+	if err != nil {
+		t.Fail()
+	}
+
+	d, err := p.Pop(key, "LPOP")
+	if err != nil {
+		t.Fail()
+	} else {
+		t.Log(d)
+	}
+}
+
 func TestZRem(t *testing.T) {
 	initPool()
 	key := "web:uv"

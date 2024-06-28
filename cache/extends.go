@@ -9,6 +9,7 @@ import (
 const (
 	LPUSH           = "LPUSH"
 	LPOP            = "LPOP"
+	RPOP            = "RPOP"
 	ZADD            = "ZADD"
 	ZRANGE          = "ZRANGE"
 	ZREVRANGE       = "ZREVRANGE"
@@ -46,6 +47,11 @@ func (p *RedisPool) LPush(key string, values ...string) error {
 
 // LPop 从队列尾部获取数据，一次获取一个
 func (p *RedisPool) LPop(key string) (string, error) {
+	return p.Pop(key, LPOP)
+}
+
+// Pop 从队列中获取一条数据
+func (p *RedisPool) Pop(key, direct string) (string, error) {
 	c := p.Get()
 	if c == nil {
 		return "", getConnErr
@@ -54,7 +60,11 @@ func (p *RedisPool) LPop(key string) (string, error) {
 
 	RedisSend(c, Multi)
 	RedisSend(c, Select, p.DBIndex)
-	RedisSend(c, LPOP, key)
+	if direct == LPOP {
+		RedisSend(c, LPOP, key)
+	} else {
+		RedisSend(c, RPOP, key)
+	}
 
 	value, err := redis.Strings(c.Do(Exec))
 	if err != nil {
