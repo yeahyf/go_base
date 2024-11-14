@@ -13,9 +13,10 @@ import (
 )
 
 const (
-	Set = "SET"
-	Get = "GET"
-	DEL = "DEL"
+	Set    = "SET"
+	Get    = "GET"
+	DEL    = "DEL"
+	EXISTS = "EXISTS"
 
 	MGet = "MGET"
 	MSet = "MSET"
@@ -154,6 +155,30 @@ func (p *RedisPool) DeleteValueWithDbIdx(key string, dbIdx int) (int, error) {
 // GetValue 从Redis中获取指定的值
 func (p *RedisPool) GetValue(key string) (string, error) {
 	return p.GetValueWithDbIdx(key, p.DBIndex)
+}
+
+// ExistsValue 判断某个 Key 是否有缓存
+func (p *RedisPool) ExistsValue(key string) (bool, error) {
+	c := p.Get()
+	if c == nil {
+		return false, getConnErr
+	}
+	defer CloseAction(c) //函数运行结束 ，把连接放回连接池
+
+	RedisSend(c, Multi)
+	RedisSend(c, Select, p.DBIndex)
+	RedisSend(c, EXISTS, key)
+
+	replay, err := redis.Values(c.Do(Exec))
+	if err != nil {
+		return false, err
+	}
+	var value int
+	value, err = redis.Int(replay[1], err)
+	if err != nil {
+		return false, err
+	}
+	return value == 1, nil
 }
 
 // GetValueWithDbIdx 从Redis中获取指定的值

@@ -10,6 +10,19 @@ func initPool() {
 	p = NewRedisPoolByDB(1, 2, 30, "127.0.0.1:6379", "", 0)
 }
 
+func TestExists(t *testing.T) {
+	initPool()
+	key := "web:uv"
+	_ = p.SetValue(key, "asdf", 100)
+	result, err := p.ExistsValue(key)
+	if err != nil {
+		t.Fail()
+	}
+	if !result {
+		t.Fail()
+	}
+}
+
 func TestList(t *testing.T) {
 	initPool()
 	key := "web:uv"
