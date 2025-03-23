@@ -4,6 +4,7 @@ import (
 	"strconv"
 
 	"github.com/gomodule/redigo/redis"
+	"github.com/yeahyf/go_base/log"
 )
 
 const (
@@ -31,10 +32,10 @@ const (
 func (p *RedisPool) LPush(key string, values ...string) error {
 	c := p.Get()
 	if c == nil {
-		return getConnErr
+		return ErrGetConn
 	}
 	defer CloseAction(c)
-	//使用Do命令执行缓存区的命令
+	// 使用Do命令执行缓存区的命令
 	RedisSend(c, Multi)
 	RedisSend(c, Select, p.DBIndex)
 	for _, v := range values {
@@ -54,9 +55,9 @@ func (p *RedisPool) LPop(key string) (string, error) {
 func (p *RedisPool) Pop(key, direct string) (string, error) {
 	c := p.Get()
 	if c == nil {
-		return "", getConnErr
+		return "", ErrGetConn
 	}
-	defer CloseAction(c) //函数运行结束 ，把连接放回连接池
+	defer CloseAction(c) // 函数运行结束 ，把连接放回连接池
 
 	RedisSend(c, Multi)
 	RedisSend(c, Select, p.DBIndex)
@@ -74,11 +75,11 @@ func (p *RedisPool) Pop(key, direct string) (string, error) {
 			return "", err
 		}
 	}
-	//长度必须为2
+	// 长度必须为2
 	if len(value) == 2 {
 		return value[1], nil
 	}
-	return "", valueErr
+	return "", ErrGetValue
 }
 
 // LMPop 从队列尾部获取数据,一次获取多个,尾部的序号为从0开始
@@ -86,9 +87,9 @@ func (p *RedisPool) Pop(key, direct string) (string, error) {
 func (p *RedisPool) LMPop(key string, start, stop uint32) ([]string, error) {
 	c := p.Get()
 	if c == nil {
-		return nil, getConnErr
+		return nil, ErrGetConn
 	}
-	defer CloseAction(c) //函数运行结束 ，把连接放回连接池
+	defer CloseAction(c) // 函数运行结束 ，把连接放回连接池
 
 	RedisSend(c, Multi)
 	RedisSend(c, Select, p.DBIndex)
@@ -113,21 +114,21 @@ func (p *RedisPool) LMPop(key string, start, stop uint32) ([]string, error) {
 			return result, nil
 		}
 	}
-	return nil, valueErr
+	return nil, ErrGetValue
 }
 
 // ZAdd 向排序集合中增加数据
 func (p *RedisPool) ZAdd(key, field string, value float64) error {
 	c := p.Get()
 	if c == nil {
-		return getConnErr
+		return ErrGetConn
 	}
 	defer CloseAction(c)
-	//使用Do命令执行缓存区的命令
+	// 使用Do命令执行缓存区的命令
 
 	RedisSend(c, Multi)
 	RedisSend(c, Select, p.DBIndex)
-	RedisSend(c, ZADD, key, value, field) //直接覆盖
+	RedisSend(c, ZADD, key, value, field) // 直接覆盖
 
 	_, err := c.Do(Exec)
 	return err
@@ -137,16 +138,16 @@ func (p *RedisPool) ZAdd(key, field string, value float64) error {
 func (p *RedisPool) ZMAdd(key string, field []string, value []float64) error {
 	c := p.Get()
 	if c == nil {
-		return getConnErr
+		return ErrGetConn
 	}
 	defer CloseAction(c)
-	//使用Do命令执行缓存区的命令
+	// 使用Do命令执行缓存区的命令
 
 	RedisSend(c, Multi)
 	RedisSend(c, Select, p.DBIndex)
 	length := len(field)
 	for i := 0; i < length; i++ {
-		RedisSend(c, ZADD, key, value[i], field[i]) //直接覆盖
+		RedisSend(c, ZADD, key, value[i], field[i]) // 直接覆盖
 	}
 	_, err := c.Do(Exec)
 	return err
@@ -156,10 +157,10 @@ func (p *RedisPool) ZMAdd(key string, field []string, value []float64) error {
 func (p *RedisPool) zFetch(key string, start, stop uint32, isRev bool) ([]string, error) {
 	c := p.Get()
 	if c == nil {
-		return nil, getConnErr
+		return nil, ErrGetConn
 	}
 	defer CloseAction(c)
-	//使用Do命令执行缓存区的命令
+	// 使用Do命令执行缓存区的命令
 
 	RedisSend(c, Multi)
 	RedisSend(c, Select, p.DBIndex)
@@ -187,7 +188,7 @@ func (p *RedisPool) zFetch(key string, start, stop uint32, isRev bool) ([]string
 			return result, nil
 		}
 	}
-	return nil, valueErr
+	return nil, ErrGetValue
 }
 
 // ZRange 获取有序集合中的指定位置的数据（不带分数）
@@ -204,10 +205,10 @@ func (p *RedisPool) ZRevRange(key string, start, stop uint32) ([]string, error) 
 func (p *RedisPool) zFetchWithScore(key string, start, stop uint32, isRev bool) ([]string, []float64, error) {
 	c := p.Get()
 	if c == nil {
-		return nil, nil, getConnErr
+		return nil, nil, ErrGetConn
 	}
 	defer CloseAction(c)
-	//使用Do命令执行缓存区的命令
+	// 使用Do命令执行缓存区的命令
 
 	RedisSend(c, Multi)
 	RedisSend(c, Select, p.DBIndex)
@@ -250,7 +251,7 @@ func (p *RedisPool) zFetchWithScore(key string, start, stop uint32, isRev bool) 
 			return f, s, nil
 		}
 	}
-	return nil, nil, valueErr
+	return nil, nil, ErrGetValue
 }
 
 func (p *RedisPool) ZRangeWithScore(key string, start, stop uint32) ([]string, []float64, error) {
@@ -265,10 +266,10 @@ func (p *RedisPool) ZRevRangeWithScore(key string, start, stop uint32) ([]string
 func (p *RedisPool) ZRangeByScore(key string, min, max float64) ([]string, error) {
 	c := p.Get()
 	if c == nil {
-		return nil, getConnErr
+		return nil, ErrGetConn
 	}
 	defer CloseAction(c)
-	//使用Do命令执行缓存区的命令
+	// 使用Do命令执行缓存区的命令
 
 	RedisSend(c, Multi)
 	RedisSend(c, Select, p.DBIndex)
@@ -294,17 +295,17 @@ func (p *RedisPool) ZRangeByScore(key string, min, max float64) ([]string, error
 			return f, nil
 		}
 	}
-	return nil, valueErr
+	return nil, ErrGetValue
 }
 
 // ZRangeByScoreWithScore 根据最大最小值获取列表（带分数）
 func (p *RedisPool) ZRangeByScoreWithScore(key string, min, max float64) ([]string, []float64, error) {
 	c := p.Get()
 	if c == nil {
-		return nil, nil, getConnErr
+		return nil, nil, ErrGetConn
 	}
 	defer CloseAction(c)
-	//使用Do命令执行缓存区的命令
+	// 使用Do命令执行缓存区的命令
 
 	RedisSend(c, Multi)
 	RedisSend(c, Select, p.DBIndex)
@@ -343,17 +344,17 @@ func (p *RedisPool) ZRangeByScoreWithScore(key string, min, max float64) ([]stri
 			return f, s, nil
 		}
 	}
-	return nil, nil, valueErr
+	return nil, nil, ErrGetValue
 }
 
 // ZRem 根据key进行删除,返回删除的数量
 func (p *RedisPool) ZRem(key string, fields ...string) (int64, error) {
 	c := p.Get()
 	if c == nil {
-		return 0, getConnErr
+		return 0, ErrGetConn
 	}
 	defer CloseAction(c)
-	//使用Do命令执行缓存区的命令
+	// 使用Do命令执行缓存区的命令
 
 	RedisSend(c, Multi)
 	RedisSend(c, Select, p.DBIndex)
@@ -373,17 +374,17 @@ func (p *RedisPool) ZRem(key string, fields ...string) (int64, error) {
 			return source, nil
 		}
 	}
-	return 0, valueErr
+	return 0, ErrGetValue
 }
 
 // ZCard 获取有序集合成员个数
 func (p *RedisPool) ZCard(key string) (int64, error) {
 	c := p.Get()
 	if c == nil {
-		return 0, getConnErr
+		return 0, ErrGetConn
 	}
 	defer CloseAction(c)
-	//使用Do命令执行缓存区的命令
+	// 使用Do命令执行缓存区的命令
 
 	RedisSend(c, Multi)
 	RedisSend(c, Select, p.DBIndex)
@@ -410,10 +411,10 @@ func (p *RedisPool) ZCard(key string) (int64, error) {
 func (p *RedisPool) ZRemRangeByRank(key string, start, stop uint32) error {
 	c := p.Get()
 	if c == nil {
-		return getConnErr
+		return ErrGetConn
 	}
 	defer CloseAction(c)
-	//使用Do命令执行缓存区的命令
+	// 使用Do命令执行缓存区的命令
 
 	RedisSend(c, Multi)
 	RedisSend(c, Select, p.DBIndex)
@@ -427,10 +428,10 @@ func (p *RedisPool) ZRemRangeByRank(key string, start, stop uint32) error {
 func (p *RedisPool) HSet(key, filed string, value string) error {
 	c := p.Get()
 	if c == nil {
-		return getConnErr
+		return ErrGetConn
 	}
 	defer CloseAction(c)
-	//使用Do命令执行缓存区的命令
+	// 使用Do命令执行缓存区的命令
 
 	RedisSend(c, Multi)
 	RedisSend(c, Select, p.DBIndex)
@@ -443,10 +444,10 @@ func (p *RedisPool) HSet(key, filed string, value string) error {
 func (p *RedisPool) HLen(key string) (int64, error) {
 	c := p.Get()
 	if c == nil {
-		return 0, getConnErr
+		return 0, ErrGetConn
 	}
 	defer CloseAction(c)
-	//使用Do命令执行缓存区的命令
+	// 使用Do命令执行缓存区的命令
 	RedisSend(c, Multi)
 	RedisSend(c, Select, p.DBIndex)
 	RedisSend(c, HLEN, key)
@@ -459,17 +460,17 @@ func (p *RedisPool) HLen(key string) (int64, error) {
 			return 0, err
 		}
 	}
-	//长度必须为2
+	// 长度必须为2
 	if len(value) == 2 {
 		if length, ok := value[1].(int64); ok {
 			if err != nil {
-				return 0, valueErr
+				return 0, ErrGetValue
 			} else {
 				return length, nil
 			}
 		}
 	}
-	return 0, valueErr
+	return 0, ErrGetValue
 }
 
 // HMSet 批量存储Hash数据
@@ -477,10 +478,10 @@ func (p *RedisPool) HLen(key string) (int64, error) {
 func (p *RedisPool) HMSet(key string, values ...string) error {
 	c := p.Get()
 	if c == nil {
-		return getConnErr
+		return ErrGetConn
 	}
 	defer CloseAction(c)
-	//使用Do命令执行缓存区的命令
+	// 使用Do命令执行缓存区的命令
 	RedisSend(c, Multi)
 	RedisSend(c, Select, p.DBIndex)
 	args := make([]interface{}, 0, len(values)+1)
@@ -497,10 +498,10 @@ func (p *RedisPool) HMSet(key string, values ...string) error {
 func (p *RedisPool) HMSetWithMap(key string, m map[string]string) error {
 	c := p.Get()
 	if c == nil {
-		return getConnErr
+		return ErrGetConn
 	}
 	defer CloseAction(c)
-	//使用Do命令执行缓存区的命令
+	// 使用Do命令执行缓存区的命令
 
 	RedisSend(c, Multi)
 	RedisSend(c, Select, p.DBIndex)
@@ -514,10 +515,10 @@ func (p *RedisPool) HMSetWithMap(key string, m map[string]string) error {
 func (p *RedisPool) HMGet(key string, fields []string) ([]string, error) {
 	c := p.Get()
 	if c == nil {
-		return nil, getConnErr
+		return nil, ErrGetConn
 	}
 	defer CloseAction(c)
-	//使用Do命令执行缓存区的命令
+	// 使用Do命令执行缓存区的命令
 
 	RedisSend(c, Multi)
 	RedisSend(c, Select, p.DBIndex)
@@ -552,17 +553,17 @@ func (p *RedisPool) HMGet(key string, fields []string) ([]string, error) {
 
 		}
 	}
-	return nil, valueErr
+	return nil, ErrGetValue
 }
 
 // HDel 删除Hash数据
 func (p *RedisPool) HDel(key string, dataKeys ...string) error {
 	c := p.Get()
 	if c == nil {
-		return getConnErr
+		return ErrGetConn
 	}
 	defer CloseAction(c)
-	//使用Do命令执行缓存区的命令
+	// 使用Do命令执行缓存区的命令
 
 	RedisSend(c, Multi)
 	RedisSend(c, Select, p.DBIndex)
@@ -575,4 +576,28 @@ func (p *RedisPool) HDel(key string, dataKeys ...string) error {
 	RedisSend(c, HDEL, args...)
 	_, err := c.Do(Exec)
 	return err
+}
+
+// ExecScript 执行 lua 脚本，返回结果为 interface{}
+func (p *RedisPool) ExecScript(script string, param ...interface{}) (interface{}, error) {
+	c := p.Get()
+	if c == nil {
+		return "", ErrGetConn
+	}
+	defer CloseAction(c)
+	// 不能在 lua 脚本中执行 select 操作，只能单独处理
+	RedisSend(c, Select, p.DBIndex)
+	// 执行 Lua 脚本
+	scriptSHA := redis.NewScript(1, script) // 1 表示 KEYS 的数量
+	result, err := scriptSHA.Do(c, param...)
+	if err != nil {
+		log.Error("execute lua script error", err)
+		return "", err
+	}
+	return result, nil
+}
+
+// ExecScriptString 执行 lua 脚本，返回结果为 string
+func (p *RedisPool) ExecScriptString(script string, param ...interface{}) (string, error) {
+	return redis.String(p.ExecScript(script, param...))
 }

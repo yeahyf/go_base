@@ -7,7 +7,7 @@ import (
 var p *RedisPool
 
 func initPool() {
-	p = NewRedisPoolByDB(1, 2, 30, "127.0.0.1:6379", "", 0)
+	p = NewRedisPoolByDB(1, 2, 30, "127.0.0.1:6379", "", 10)
 }
 
 func TestExists(t *testing.T) {
@@ -21,6 +21,50 @@ func TestExists(t *testing.T) {
 	if !result {
 		t.Fail()
 	}
+}
+
+const LUASCRIPT = `
+	local key = KEYS[1]
+	local value = ARGV[1]
+	local ttl = tonumber(ARGV[2])
+
+	-- 检查 TTL 是否为有效数字
+	if ttl == nil then
+    	return "ERR_INVALID_TTL"
+	end
+
+	-- 获取当前值
+	local current_value = redis.call("GET", key)
+
+	-- 处理键不存在的情况
+	if current_value == nil then
+    	return "ERR_KEY_NOT_EXIST"
+	end
+
+	-- 比较值并设置 TTL
+	if current_value == value then
+    	local expire_result = redis.call("EXPIRE", key, ttl)
+    	if expire_result == 0 then
+        	return "ERR_EXPIRE_FAILED"
+    	else
+        	return "OK"
+    	end
+	else
+    	return "ERR_VALUE_MISMATCH"
+	end
+	`
+
+func TestExecScript(t *testing.T) {
+	initPool()
+	key := "4gsy0eif7wc_0"
+	value := "hDCPCfy-WywKXn6B4vsjPHqK4dCV_4sj"
+	ttl := 600
+
+	result, err := p.ExecScript(LUASCRIPT, key, value, ttl)
+	if err != nil {
+		t.Error(err)
+	}
+	t.Log(result)
 }
 
 func TestList(t *testing.T) {
