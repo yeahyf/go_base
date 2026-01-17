@@ -1,20 +1,31 @@
 package hbase
 
 import (
+	"bytes"
+	"compress/gzip"
 	"context"
+	"encoding/csv"
+	"encoding/json"
 	"errors"
+	"fmt"
+	"io"
+	"os"
 	"testing"
 	"time"
 
+	"github.com/yeahyf/go_base/file"
+	"github.com/yeahyf/go_base/strutil"
 	"github.com/yeahyf/go_base/utils"
 
 	"github.com/yeahyf/go_base/log"
 )
 
 const (
-	URL       = "http://ld-8vb1yr869xuausw73-proxy-lindorm-pub.lindorm.rds.aliyuncs.com:9190"
+	//URL = "http://ld-wz9nuxthmu1a8701f-proxy-lindorm-pub.lindorm.rds.aliyuncs.com:9190"
+	// URL       = "ld-wz9nuxthmu1a8701f-proxy-lindorm-pub.lindorm.rds.aliyuncs.com:30020"
+	URL       = "http://ld-t4ndtn7r3609s4cuu-proxy-thrift-pub.lindorm.aliyuncs.com:9190"
 	USER      = "root"
-	PASSWORD  = "5OIQb3hs"
+	PASSWORD  = "UcYTFQILYniS"
 	SpaceName = "ass"
 )
 
@@ -32,14 +43,14 @@ var conf = &PoolConf{
 
 	1,
 	2,
-	5,
+	10,
 	300 * time.Second,
 	3600 * time.Second,
 }
 
 func TestCreateNameSpace(t *testing.T) {
 	file := "/Users/yeahyf/workproject/archive_service_system/conf/zap.json"
-	//cfg.Load(&file)
+	// cfg.Load(&file)
 	log.SetLogConf(&file)
 	pool := NewPoolByCfg(conf)
 	defer pool.Close()
@@ -56,9 +67,10 @@ func TestCreateNameSpace(t *testing.T) {
 		return
 	}
 }
+
 func TestDeleteNameSpace(t *testing.T) {
 	file := "/Users/yeahyf/workproject/archive_service_system/conf/zap.json"
-	//cfg.Load(&file)
+	// cfg.Load(&file)
 	log.SetLogConf(&file)
 	pool := NewPoolByCfg(conf)
 	defer pool.Close()
@@ -74,10 +86,11 @@ func TestDeleteNameSpace(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
 func TestListAllTable(t *testing.T) {
 	file := "/Users/yeahyf/workproject/archive_service_system/conf/zap.json"
-	//cfg.Load(&file)
-	//Init()
+	// cfg.Load(&file)
+	// Init()
 	log.SetLogConf(&file)
 	pool := NewPoolByCfg(conf)
 	defer pool.Close()
@@ -93,11 +106,17 @@ func TestListAllTable(t *testing.T) {
 		t.Fatal(err)
 		return
 	}
-	t.Log(list)
+	// println(list)
+	t.Log(len(list))
+	for i := range len(list) {
+		t.Log(list[i])
+		println(list[i])
+	}
 }
+
 func TestCreateTable(t *testing.T) {
 	file := "/Users/yeahyf/workproject/archive_service_system/conf/zap.json"
-	//cfg.Load(&file)
+	// cfg.Load(&file)
 	log.SetLogConf(&file)
 	pool := NewPoolByCfg(conf)
 	defer pool.Close()
@@ -119,7 +138,7 @@ func TestCreateTable(t *testing.T) {
 
 func TestExistsTable(t *testing.T) {
 	file := "/Users/yeahyf/workproject/archive_service_system/conf/zap.json"
-	//cfg.Load(&file)
+	// cfg.Load(&file)
 	log.SetLogConf(&file)
 	pool := NewPoolByCfg(conf)
 	defer pool.Close()
@@ -143,7 +162,7 @@ func TestExistsTable(t *testing.T) {
 
 func TestCreateTableWithVersion(t *testing.T) {
 	file := "/Users/yeahyf/workproject/archive_service_system/conf/zap.json"
-	//cfg.Load(&file)
+	// cfg.Load(&file)
 	log.SetLogConf(&file)
 	pool := NewPoolByCfg(conf)
 	defer pool.Close()
@@ -165,7 +184,7 @@ func TestCreateTableWithVersion(t *testing.T) {
 
 func TestDeleteTable(t *testing.T) {
 	file := "/Users/yeahyf/workproject/archive_service_system/conf/zap.json"
-	//cfg.Load(&file)
+	// cfg.Load(&file)
 	log.SetLogConf(&file)
 	pool := newConnPool(thriftHBaseConnFactory, conf)
 	defer pool.Close()
@@ -184,12 +203,16 @@ func TestDeleteTable(t *testing.T) {
 		return
 	}
 }
+
 func TestFetchRow(t *testing.T) {
-	file := "/Users/yeahyf/workproject/archive_service_system/conf/zap.json"
-	//cfg.Load(&file)
-	log.SetLogConf(&file)
+	file1 := "/Users/yeahyf/workproject/archive_service_system/conf/zap.json"
+	// cfg.Load(&file)
+	log.SetLogConf(&file1)
 	pool := NewPoolByCfg(conf)
 	defer pool.Close()
+
+	// 读取文件
+
 	conn, err := pool.Get(context.Background())
 	if err != nil {
 		t.Fatal(err)
@@ -197,24 +220,64 @@ func TestFetchRow(t *testing.T) {
 	}
 	defer pool.Put(conn)
 
-	tableName := "playcity"
-	rowKey := "2gknb1qvkfu:0"
-	m, err := conn.FetchRow(tableName, rowKey, nil)
+	tableName := "fsaq0"
+	rowKey := "4sa76nt10w1:0"
+
+	columnKeys := make(map[string][]string, 4)
+	columnKeys["a"] = []string{"z9"}
+
+	m, err := conn.FetchRow(tableName, rowKey, columnKeys)
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	if _, ok := m["z9"]; ok {
+		println("=====")
+	}
+
+	result := make(map[string]string)
 	for k, v := range m {
-		if k == "t" {
-			t.Log(k, utils.GetInt64FromBytes(v))
+		value, e := strutil.Gunzip(v)
+		if e != nil {
+			result[k] = string(v)
 		} else {
-			t.Log(k, string(v))
+			result[k] = string(value)
 		}
+	}
+	//content2, _ := json.Marshal(result["z8"])
+	//content1, _ := json.Marshal(result)
+	//println(strings.ReplaceAll(string(content1), "\\", ""))
+	//println(strings.ReplaceAll(string(content2), "\\", ""))
+	for k, v := range result {
+		fmt.Printf("%s:%s", k, v)
 	}
 
 }
+
+func CompressString(s string) ([]byte, error) {
+	var buf bytes.Buffer
+	gz := gzip.NewWriter(&buf)
+
+	_, err := gz.Write([]byte(s))
+	if err != nil {
+		return nil, err
+	}
+
+	if err := gz.Close(); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+func TestZip(t *testing.T) {
+	zip, _ := CompressString("Hello World")
+	r, _ := strutil.Gunzip(zip)
+	println(string(r))
+}
+
 func TestDeleteRow(t *testing.T) {
 	file := "/Users/yeahyf/workproject/archive_service_system/conf/zap.json"
-	//cfg.Load(&file)
+	// cfg.Load(&file)
 	log.SetLogConf(&file)
 	pool := NewPoolByCfg(conf)
 	defer pool.Close()
@@ -225,8 +288,8 @@ func TestDeleteRow(t *testing.T) {
 	}
 	defer pool.Put(conn)
 
-	tableName := "new_2"
-	rowKey := "2gknb1qvkfu:2"
+	tableName := "fsaq0"
+	rowKey := "4tpsjvaebx4:0"
 
 	err = conn.DeleteRow(tableName, rowKey)
 	if err != nil {
@@ -236,52 +299,86 @@ func TestDeleteRow(t *testing.T) {
 	} else {
 		t.Log("delete successfully")
 	}
-
 }
+
+// 更新数据
 func TestUpdateRow(t *testing.T) {
-	file := "/Users/yeahyf/workproject/archive_service_system/conf/zap.json"
-	//cfg.Load(&file)
-	log.SetLogConf(&file)
+	file1 := "/Users/yeahyf/workproject/archive_service_system/conf/zap.json"
+	// cfg.Load(&file)
+	log.SetLogConf(&file1)
 	pool := NewPoolByCfg(conf)
 	defer pool.Close()
-	conn, err := pool.Get(context.Background())
-	if err != nil {
-		t.Fatal(err)
-		return
-	}
-	defer pool.Put(conn)
 
-	tableName := "new_2"
-	rowKey := "2gknb1qvkfu:2"
+	source := make(map[string]struct{}, 273)
 
-	data := make(map[string][]byte, 3)
-	a1 := []byte("1_0")
-	a2 := []byte("2_0")
-	a3 := []byte("3_0")
-	a4 := []byte("4_0")
+	file.ReadLine("/Users/yeahyf/修复玩家ID02.csv", func(line *string) {
+		source[*line] = struct{}{}
+	})
 
-	data["a3"] = a1
-	data["a4"] = a2
-	data["a1"] = a3
-	data["a2"] = a4
+	// 从文件中读取数据
 
-	extends := make(map[string][]byte, 1)
-	ts := time.Now().Unix()
-	tdata := utils.GetBytesForInt64(uint64(ts))
-	extends[timeStampQualifier] = tdata
+	file.ReadLine("/Users/yeahyf/datadelete.txt", func(line *string) {
+		aLine := *line
 
-	m := make(map[string]map[string][]byte)
-	m[archiveFamilyName] = data
-	m[extendFamilyName] = extends
+		id := aLine[0:11]
 
-	err = conn.UpdateRow(tableName, rowKey, m)
-	if err != nil {
-		t.Fatal(err)
-	}
+		uid := id + "0"
+		if _, ok := source[uid]; !ok {
+			return
+		}
+
+		d := aLine[13:]
+		aMap := make(map[string]string, 4)
+		err := json.Unmarshal([]byte(d), &aMap)
+		if err != nil {
+			println("err")
+		}
+
+		bMap := make(map[string][]byte, 4)
+		for k, v := range aMap {
+			bMap[k], _ = CompressString(v)
+		}
+
+		conn, err := pool.Get(context.Background())
+		if err != nil {
+			t.Fatal(err)
+			return
+		}
+		defer pool.Put(conn)
+
+		tableName := "fsaq0"
+		rowKey := id + ":0"
+		println(rowKey)
+
+		//data := make(map[string][]byte, 4)
+		// 将获取到的数据放入map中
+
+		extends := make(map[string][]byte, 1)
+		ts := time.Now().Unix()
+		tdata := utils.GetBytesForInt64(uint64(ts))
+		extends[timeStampQualifier] = tdata
+
+		m := make(map[string]map[string][]byte)
+		m[archiveFamilyName] = bMap
+		m[extendFamilyName] = extends
+
+		err = conn.UpdateRow(tableName, rowKey, m)
+		if err != nil {
+			t.Fatal(err)
+		}
+	})
 }
+
+func TestDateFile(t *testing.T) {
+	file.ReadLine("/Users/yeahyf/datadelete.txt", func(line *string) {
+		l := *line
+		println(l)
+	})
+}
+
 func TestExistRow(t *testing.T) {
 	file := "/Users/yeahyf/workproject/archive_service_system/conf/zap.json"
-	//cfg.Load(&file)
+	// cfg.Load(&file)
 	log.SetLogConf(&file)
 	pool := NewPoolByCfg(conf)
 	defer pool.Close()
@@ -292,20 +389,21 @@ func TestExistRow(t *testing.T) {
 	}
 	defer pool.Put(conn)
 
-	tableName := "new_2"
-	rowKey := "2gknb1qvkfu:2"
+	tableName := "oncn1"
+	rowKey := "4le91psw1p1:1"
 
 	exist, err := conn.ExistRow(tableName, rowKey)
 	if err != nil {
 		t.Fatal(err)
-	} else {
 		t.Log(exist)
+	} else {
+		println(exist)
 	}
-
 }
+
 func TestDeleteColumns(t *testing.T) {
 	file := "/Users/yeahyf/workproject/archive_service_system/conf/zap.json"
-	//cfg.Load(&file)
+	// cfg.Load(&file)
 	log.SetLogConf(&file)
 	pool := NewPoolByCfg(conf)
 	defer pool.Close()
@@ -316,14 +414,14 @@ func TestDeleteColumns(t *testing.T) {
 	}
 	defer pool.Put(conn)
 
-	tableName := "playcity"
-	rowKey := "2gknb1qvkfu:0"
+	tableName := "oncn1"
+	rowKey := "41uectphb5w:1"
 
 	m := make(map[string][]string)
-	s := []string{"a4", "a3", "a1"}
-	t1 := []string{"t"}
+	s := []string{"aes"}
+	// t1 := []string{"t"}
 	m["a"] = s
-	m["e"] = t1
+	// m["e"] = t1
 
 	err = conn.DeleteColumns(tableName, rowKey, m)
 	if err != nil {
@@ -331,34 +429,104 @@ func TestDeleteColumns(t *testing.T) {
 	} else {
 		t.Log("delete successful")
 	}
-
 }
 
 func TestFetchRowWithVersion(t *testing.T) {
-	file := "/Users/yeahyf/workproject/archive_service_system/conf/zap.json"
-	//cfg.Load(&file)
-	log.SetLogConf(&file)
+	logfile := "/Users/yeahyf/workproject/archive_service_system/conf/zap.json"
+	// cfg.Load(&file)
+	log.SetLogConf(&logfile)
 	pool := NewPoolByCfg(conf)
 	defer pool.Close()
-	conn, err := pool.Get(context.Background())
+
+	file, err := os.Open("/Users/yeahyf/黑名单数据.csv")
 	if err != nil {
-		t.Fatal(err)
+		fmt.Println("open file err")
 		return
 	}
-	defer pool.Put(conn)
+	defer file.Close()
 
-	tableName := "new_2"
-	rowKey := "2gknb1qvkfu:2"
-	m, err := conn.FetchRowByVer(tableName, rowKey, nil, 11)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for k, v := range m {
-		if k == "t" {
-			t.Log(k, utils.GetInt64FromBytes(v))
-		} else {
-			t.Log(k, string(v))
+	reader := csv.NewReader(file)
+	for {
+		time.Sleep(100 * time.Millisecond)
+		record, err := reader.Read()
+		if err == io.EOF {
+			break
 		}
-	}
+		if err != nil {
+			fmt.Println("open file err")
+		}
+		conn, err := pool.Get(context.Background())
+		if err != nil {
+			t.Fatal(err)
+			return
+		}
+		tableName := record[4]
+		userid := record[0]
+		rowKey := userid[:len(userid)-1] + ":" + userid[len(userid)-1:]
+		m, err := conn.FetchRowByVer(tableName, rowKey, nil, 11)
+		if err != nil {
+			t.Fatal(err)
+		}
 
+		if v, ok := m["abnormal_count"]; ok {
+			println("userid", utils.GetInt64FromBytes(v))
+		} else {
+			println("=====")
+		}
+		pool.Put(conn)
+	}
+}
+
+func TestUpdateAbnormalCount(t *testing.T) {
+	logFile := "/Users/yeahyf/workproject/archive_service_system/conf/zap.json"
+	// cfg.Load(&file)
+	log.SetLogConf(&logFile)
+	pool := NewPoolByCfg(conf)
+	defer pool.Close()
+
+	file, err := os.Open("/Users/yeahyf/黑名单数据.csv")
+	if err != nil {
+		fmt.Println("open file err")
+		return
+	}
+	defer file.Close()
+
+	reader := csv.NewReader(file)
+	for {
+		time.Sleep(100 * time.Millisecond)
+		record, err := reader.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			fmt.Println("open file err")
+		}
+
+		// fmt.Println(record)
+		// time.Sleep(300 * time.Millisecond)
+
+		conn, err := pool.Get(context.Background())
+		if err != nil {
+			t.Fatal(err)
+			return
+		}
+		//	defer pool.Put(conn)
+
+		// 从 excel 中读取数据
+		tableName := record[4]
+		userid := record[0]
+		rowKey := userid[:len(userid)-1] + ":" + userid[len(userid)-1:]
+		values := make(map[string]map[string][]byte, 1)
+		v := make(map[string][]byte, 1)
+		v["abnormal_count"] = utils.GetBytesForInt64(uint64(1))
+		values["a"] = v
+
+		fmt.Println(tableName, rowKey, values)
+		// time.Sleep(3 * time.Minute)
+		err = conn.UpdateRow(tableName, rowKey, values)
+		if err != nil {
+			fmt.Println(record)
+		}
+		pool.Put(conn)
+	}
 }

@@ -18,26 +18,28 @@ import (
 var PoolClosedErr = errors.New("connection pool closed")
 
 // Connection 连接接口，按照业务需求定制
+// 所有表操作方法都支持可选的命名空间参数（通过可变参数传递）
+// 如果不提供命名空间参数，则使用连接创建时指定的默认命名空间
 type Connection interface {
-	CreateNameSpace() error //创建表空间
-	DeleteNameSpace() error //删除表空间
+	CreateNameSpace(namespace ...string) error //创建表空间
+	DeleteNameSpace(namespace ...string) error //删除表空间
 
-	CreateTable(tableName string, familyNames []string) error                      //创建表
-	CreateTableWithVer(tableName string, familyNames []string, maxVer int32) error //创建表
-	ExistTable(tableName string) (bool, error)                                     //表是否存在
-	DisableTable(tableName string) error                                           //停用表
-	EnableTable(tableName string) error                                            //停用表
-	DeleteTable(tableName string) error                                            //删除表
-	ListAllTable() ([]string, error)                                               //列出所有的表名
+	CreateTable(tableName string, familyNames []string, namespace ...string) error                      //创建表
+	CreateTableWithVer(tableName string, familyNames []string, maxVer int32, namespace ...string) error //创建表
+	ExistTable(tableName string, namespace ...string) (bool, error)                                     //表是否存在
+	DisableTable(tableName string, namespace ...string) error                                           //停用表
+	EnableTable(tableName string, namespace ...string) error                                            //启用表
+	DeleteTable(tableName string, namespace ...string) error                                            //删除表
+	ListAllTable(namespace ...string) ([]string, error)                                                 //列出所有的表名
 
-	UpdateRow(tableName, rowKey string, values map[string]map[string][]byte) error                                   //更新存档
-	FetchRow(tableName, rowKey string, columnKeys map[string][]string) (map[string][]byte, error)                    //获取存档
-	FetchRowByVer(tableName, rowKey string, columnKeys map[string][]string, maxVer int32) (map[string][]byte, error) //获取存档
-	DeleteRow(tableName, rowKey string) error                                                                        //删除存档
-	DeleteColumns(tableName, rowKey string, columnKeys map[string][]string) error                                    //删除存档中的一些Key
-	ExistRow(tableName string, rowKey string) (bool, error)
+	UpdateRow(tableName, rowKey string, values map[string]map[string][]byte, namespace ...string) error                                   //更新存档
+	FetchRow(tableName, rowKey string, columnKeys map[string][]string, namespace ...string) (map[string][]byte, error)                    //获取存档
+	FetchRowByVer(tableName, rowKey string, columnKeys map[string][]string, maxVer int32, namespace ...string) (map[string][]byte, error) //获取存档
+	DeleteRow(tableName, rowKey string, namespace ...string) error                                                                        //删除存档
+	DeleteColumns(tableName, rowKey string, columnKeys map[string][]string, namespace ...string) error                                    //删除存档中的一些Key
+	ExistRow(tableName string, rowKey string, namespace ...string) (bool, error)
 
-	isOpen() bool                   //连接是否
+	isOpen() bool                   //连接是否打开
 	open() error                    //打开连接
 	close()                         //关闭连接
 	isOverdue(t time.Duration) bool //是否超期
@@ -163,8 +165,16 @@ func (pool *ConnectionPool) balanceControl() {
 				log.Debugf("current idled too much: %d", idled)
 				log.Debugf("current used: %d", used)
 			}
-			hbaseConn, _ := <-pool.cons
-			hbaseConn.conn.close()
+			select {
+			case hbaseConn, ok := <-pool.cons:
+				if !ok {
+					// channel 已关闭，退出循环
+					return
+				}
+				hbaseConn.conn.close()
+			default:
+				// 没有可用的连接，继续
+			}
 		}
 	}
 }
@@ -184,7 +194,7 @@ func (pool *ConnectionPool) Get(ctx context.Context) (conn Connection, err error
 				return nil, PoolClosedErr
 			}
 			// 拿到的连接已经超时，将其关闭，继续取下一个
-			if time.Now().Sub(hbaseConn.idleTime) > pool.conf.MaxIdleTime ||
+			if time.Since(hbaseConn.idleTime) > pool.conf.MaxIdleTime ||
 				(pool.conf.MaxIdleTime != 0 && hbaseConn.conn.isOverdue(pool.conf.MaxIdleTime)) {
 				hbaseConn.conn.close()
 				continue
@@ -296,5 +306,5 @@ func (pool *ConnectionPool) ReleaseConn(conn Connection) {
 }
 
 func (pool *ConnectionPool) CloseConnPool() {
-	_ = pool.Close
+	pool.Close()
 }
