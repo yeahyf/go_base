@@ -67,6 +67,9 @@ func (p *Properties) Load(r io.Reader) error {
 }
 
 func (p *Properties) Get(key string) string {
+	if p == nil {
+		return ""
+	}
 	return p.values[key]
 }
 
@@ -133,20 +136,8 @@ func GetIntArray(key string) []int {
 	return r
 }
 
-// GetStringArray 获取整形数组
+// GetStringArray 获取字符串数组
 func GetStringArray(key string) []string {
 	s := p.Get(key)
 	return strings.Split(s, ",")
-}
-
-// CheckAppKey 判断appkey是否在白名单
-func CheckAppKey(appkey string) bool {
-	s := p.Get("appkey.list")
-	array := strings.Split(s, ",")
-	for _, v := range array {
-		if appkey == v {
-			return true
-		}
-	}
-	return false
 }
