@@ -34,7 +34,7 @@ func String2bytes(s *string) []byte {
 }
 
 func SortString(list []string) {
-	sort.Sort(sort.StringSlice(list))
+	sort.Strings(list)
 }
 
 // IsBase64String 如果是gzip压缩，就转base64
