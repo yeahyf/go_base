@@ -38,7 +38,7 @@ func ExistsPath(path string) (bool, error) {
 // CopyFile 拷贝文件  要拷贝的文件路径 拷贝到哪里
 func CopyFile(source, dest string) (int64, error) {
 	if source == "" || dest == "" {
-		return 0, fmt.Errorf("%s or %s is illegle", source, dest)
+		return 0, fmt.Errorf("%s or %s is illegal", source, dest)
 	}
 	var sourceInfo os.FileInfo
 	var err error
@@ -66,7 +66,8 @@ func CopyFile(source, dest string) (int64, error) {
 	if result, _ := ExistsPath(destPath); !result {
 		err := os.MkdirAll(destPath, os.ModePerm)
 		if err != nil {
-			log.Errorf("couldn't create dirs", err)
+			log.Errorf("couldn't create dirs: %v", err)
+			return 0, fmt.Errorf("couldn't create dirs: %v", err)
 		}
 	}
 	var destFile *os.File
@@ -124,18 +125,18 @@ func ReadLine(fileName string, handler func(*string)) error {
 
 // Compress 压缩文件
 // 原始地址，目标地址
-func Compress(srcFile, destFile *string) error {
+func Compress(srcFile, destFile string) error {
 	//创建目标文件
 	var newFile *os.File
 	var err error
-	newFile, err = os.Create(*destFile)
+	newFile, err = os.Create(destFile)
 	if err != nil {
 		return err
 	}
 	defer utils.CloseAction(newFile)
 
 	var oldFile *os.File
-	oldFile, err = os.Open(*srcFile)
+	oldFile, err = os.Open(srcFile)
 	if err != nil {
 		return err
 	}
@@ -166,33 +167,38 @@ func Compress(srcFile, destFile *string) error {
 }
 
 // SHA1File 计算文件的sha1值
-func SHA1File(filePath string) string {
+func SHA1File(filePath string) (string, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
-		return ""
+		return "", err
 	}
 	defer utils.CloseAction(file)
 
 	m := sha1.New()
 	_, err = io.Copy(m, file)
 	if err != nil {
-		return ""
+		return "", err
 	}
-	return hex.EncodeToString(m.Sum(nil))
+	return hex.EncodeToString(m.Sum(nil)), nil
 }
 
 // FtpFile 使用ftp进行文件传输，注意需要对ftp服务器进行适当的配置
+// 默认连接超时时间为5秒，如需自定义超时时间，请使用 FtpFileWithTimeout
 func FtpFile(destHost, sourceFilePath, destPath, destFileName, user, passwd string) error {
+	return FtpFileWithTimeout(destHost, sourceFilePath, destPath, destFileName, user, passwd, 5*time.Second)
+}
+
+// FtpFileWithTimeout 使用ftp进行文件传输，支持自定义连接超时时间
+func FtpFileWithTimeout(destHost, sourceFilePath, destPath, destFileName, user, passwd string, timeout time.Duration) error {
 	//建立连接
-	c, err := ftp.Dial(destHost, ftp.DialWithTimeout(5*time.Second))
+	c, err := ftp.Dial(destHost, ftp.DialWithTimeout(timeout))
 	if err != nil {
 		return err
 	}
-	//退出
 	defer func() {
-		err = c.Quit()
-		if err != nil {
-			log.Error("ftp quit error!", err)
+		quitErr := c.Quit()
+		if quitErr != nil {
+			log.Error("ftp quit error!", quitErr)
 		}
 	}()
 
@@ -212,6 +218,7 @@ func FtpFile(destHost, sourceFilePath, destPath, destFileName, user, passwd stri
 	if err != nil {
 		return err
 	}
+	defer utils.CloseAction(file)
 
 	r := bufio.NewReader(file)
 
