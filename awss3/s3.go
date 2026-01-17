@@ -116,7 +116,7 @@ func (client *S3Client) ListObjects(marker *string) ([]*BigStorageItem, error) {
 		&s3.ListObjectsV2Input{
 			Bucket:     &client.BucketName,
 			Delimiter:  &delimiter,
-			MaxKeys:    1000,
+			MaxKeys:    aws.Int32(1000),
 			StartAfter: marker,
 			//Prefix:     aws.String(""),
 		},
@@ -138,15 +138,12 @@ func (client *S3Client) ListObjects(marker *string) ([]*BigStorageItem, error) {
 
 // DeleteObject 删除s3对象
 func (client *S3Client) DeleteObject(item *BigStorageItem) error {
-	output, err := client.Client.DeleteObject(context.Background(),
+	_, err := client.Client.DeleteObject(context.Background(),
 		&s3.DeleteObjectInput{
 			Bucket:    aws.String(client.BucketName),
 			Key:       item.Key,
 			VersionId: item.Version,
 		})
-	if output.DeleteMarker {
-
-	}
 	return err
 }
 
@@ -157,7 +154,7 @@ func (client *S3Client) ListObjectVersion(marker *string) ([]*BigStorageItem, er
 			Bucket:    aws.String(client.BucketName),
 			Delimiter: aws.String("/"),
 			KeyMarker: marker,
-			MaxKeys:   1000,
+			MaxKeys:   aws.Int32(1000),
 			//Prefix:    aws.String("20210701_mq/dlmg5i66tn9c"),
 			//VersionIdMarker: aws.String("AmvkNCipf0PAwnjGrsVrTvJqPeiLL0rN"),
 		})

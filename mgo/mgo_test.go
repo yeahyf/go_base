@@ -7,6 +7,7 @@ import (
 
 	"github.com/yeahyf/go_base/log"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type Trainer struct {
@@ -186,3 +187,105 @@ func TestSelectAll(t *testing.T) {
 // 		fmt.Println(match, up)
 // 	}
 // }
+
+func TestSetDatabaseName(t *testing.T) {
+	logFile := "/Users/yeahyf/go/src/pubaws/conf/zap.json"
+	log.SetLogConf(&logFile)
+	address := "mongodb://yifan:123456@192.168.1.10:27017/yifants"
+	c, err := NewMongoClient(address, 10, 2, 10)
+	if err != nil {
+		t.Fatal(err)
+		t.Fail()
+	}
+	defer c.CloseClient()
+
+	newDBName := "testdb"
+	c.SetDatabaseName(&newDBName)
+	fmt.Println("Database name set to:", newDBName)
+}
+
+func TestSelectOne(t *testing.T) {
+	logFile := "/Users/yeahyf/go/src/pubaws/conf/zap.json"
+	log.SetLogConf(&logFile)
+	address := "mongodb://yifan:123456@192.168.1.10:27017/yifants"
+	c, err := NewMongoClient(address, 10, 2, 10)
+	if err != nil {
+		t.Fatal(err)
+		t.Fail()
+	}
+	defer c.CloseClient()
+
+	col := "geo"
+
+	filer := bson.M{
+		"code": "us",
+	}
+
+	geo := &Geo{}
+	err = c.SelectOne(&col, filer, geo)
+	if err != nil {
+		t.Error(err)
+		t.Fail()
+	} else {
+		fmt.Println(geo.Name)
+	}
+}
+
+func TestSelectByOptions(t *testing.T) {
+	logFile := "/Users/yeahyf/go/src/pubaws/conf/zap.json"
+	log.SetLogConf(&logFile)
+	address := "mongodb://yifan:123456@192.168.1.10:27017/yifants"
+	c, err := NewMongoClient(address, 10, 2, 10)
+	if err != nil {
+		t.Fatal(err)
+		t.Fail()
+	}
+	defer c.CloseClient()
+
+	col := "geoext"
+
+	findOptions := options.Find()
+	findOptions.SetLimit(5)
+
+	result, err := c.SelectByOptions(&col, nil, findOptions)
+	if err != nil {
+		t.Error(err)
+		t.Fail()
+	} else {
+		for _, v := range result {
+			g := &GeoExt{}
+			bsonBytes, _ := bson.Marshal(v)
+			bson.Unmarshal(bsonBytes, g)
+			fmt.Println(g.Code, g.Name)
+		}
+	}
+}
+
+func TestUpdate(t *testing.T) {
+	logFile := "/Users/yeahyf/go/src/pubaws/conf/zap.json"
+	log.SetLogConf(&logFile)
+	address := "mongodb://yifan:123456@192.168.1.10:27017/yifants"
+	c, err := NewMongoClient(address, 10, 2, 10)
+	if err != nil {
+		t.Fatal(err)
+		t.Fail()
+	}
+	defer c.CloseClient()
+
+	col := "updapp"
+
+	filer := bson.M{
+		"pubid":    "bjluhixe",
+		"platform": "1",
+		"status":   "1",
+	}
+
+	update := bson.M{"$set": bson.M{"status": "0"}}
+	match, up, err := c.Update(&col, filer, update)
+	if err != nil {
+		t.Error(err)
+		t.Fail()
+	} else {
+		fmt.Println(match, up)
+	}
+}
