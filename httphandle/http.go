@@ -45,16 +45,16 @@ type ReqData struct {
 	Appkey  string
 }
 
-//Wrapper 对基本护理逻辑的封装
+// Wrapper 对基本护理逻辑的封装
 type Wrapper func(pb proto.Message) (proto.Message, error)
 
-//IsRepeatReq 对请求进行重复检查,返回true表示重复请求,false表示无重复
+// IsRepeatReq 对请求进行重复检查,返回true表示重复请求,false表示无重复
 type IsRepeatReq func(nonce string) bool
 
-//IsValidAppKey 对Appkey进行检查,true为有效,false为无效
+// IsValidAppKey 对Appkey进行检查,true为有效,false为无效
 type IsValidAppKey func(appkey string) bool
 
-//AbstractHandler 对业务逻辑的基本封装
+// AbstractHandler 对业务逻辑的基本封装
 func AbstractHandler(httpWrapper Wrapper, repeatCheck IsRepeatReq, appKeyCheck IsValidAppKey,
 	reqPb proto.Message) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -111,7 +111,7 @@ func AbstractHandler(httpWrapper Wrapper, repeatCheck IsRepeatReq, appKeyCheck I
 	}
 }
 
-//ExRespHandler 异常响应处理
+// ExRespHandler 异常响应处理
 func ExRespHandler(w http.ResponseWriter, err error) {
 	log.Error("code="+strconv.Itoa(int(err.(*ept.Error).Code)), ", info="+err.(*ept.Error).Message)
 	w.Header().Add(HeadServerEx, "1")
@@ -242,7 +242,7 @@ func ReqBaseCheck(r *http.Request) (*ReqData, error) {
 
 	tm := time.Unix(ts, 0)
 	//超过3分钟,过期请求
-	duration := time.Now().Sub(tm)
+	duration := time.Since(tm)
 	if duration > 3*time.Minute {
 		return nil, &ept.Error{
 			Code:    immut.CodeExTs,

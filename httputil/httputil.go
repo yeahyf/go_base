@@ -69,6 +69,22 @@ func HttpReqHandle(w http.ResponseWriter, r *http.Request,
 	return true
 }
 
+const (
+	ReqestTimeout = 3
+)
+
+// CheckAppKey 判断appkey是否在白名单
+func checkAppKey(appkey string) bool {
+	s := cfg.GetString("appkey.list")
+	array := strings.Split(s, ",")
+	for _, v := range array {
+		if appkey == v {
+			return true
+		}
+	}
+	return false
+}
+
 // ReqHeadHandle 从Http请求中获取上报数据，只支持Post
 func ReqHeadHandle(r *http.Request, commonCache *CommonCache) ([]byte, error) {
 	// 对请求方法做判断
@@ -104,7 +120,7 @@ func ReqHeadHandle(r *http.Request, commonCache *CommonCache) ([]byte, error) {
 		}
 
 		//白名单校验
-		if !cfg.CheckAppKey(appkey) {
+		if !checkAppKey(appkey) {
 			if !strings.HasPrefix(appkey, "5ska3upf") {
 				log.Errorf("wrongful appkey: %s", appkey)
 			}
@@ -203,11 +219,11 @@ func ReqHeadHandle(r *http.Request, commonCache *CommonCache) ([]byte, error) {
 	}
 	tm := time.Unix(ts, 0)
 	//超过3分钟,过期请求
-	duration := time.Now().Sub(tm)
-	if duration > 3*time.Minute {
+	duration := time.Since(tm)
+	if duration > ReqestTimeout*time.Minute {
 		return nil, &ept.Error{
 			Code:    immut.CodeExTs,
-			Message: "ts duration error!!! duration=" + duration.String(),
+			Message: fmt.Sprintf("ts duration error!!! duration=%v", duration),
 		}
 	}
 
