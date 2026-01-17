@@ -3,7 +3,6 @@ package scp
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"os"
 	"path"
@@ -16,17 +15,17 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-//FileScpForKey 不使用密码，使用密钥
+// FileScpForKey 不使用密码，使用密钥
 func FileScpForKey(host, localFilePath, remoteDir, user, key string, port int) error {
 	return scpFile(host, localFilePath, remoteDir, user, "", key, port)
 }
 
-//FileScp host 主机ip地址 localFilePath 本地文件路径 remoteDir远程路径,兼容老的方法
+// FileScp host 主机ip地址 localFilePath 本地文件路径 remoteDir远程路径,兼容老的方法
 func FileScp(host, localFilePath, remoteDir, user, passwd string, port int) error {
 	return scpFile(host, localFilePath, remoteDir, user, passwd, "", port)
 }
 
-//scpFile
+// scpFile
 func scpFile(host, localFilePath, remoteDir, user, passwd, key string, port int) error {
 	// 这里换成实际的 SSH 连接的 用户名，密码，主机名或IP，SSH端口
 	sftpClient, err := sftpConnect(user, passwd, host, key, port)
@@ -65,7 +64,7 @@ func scpFile(host, localFilePath, remoteDir, user, passwd, key string, port int)
 	return nil
 }
 
-//sshClient 构建一个SSH客户端
+// sshClient 构建一个SSH客户端
 func sshClient(user, password, host, key string, port int, cipherList []string) (*ssh.Client, error) {
 	var (
 		auth         []ssh.AuthMethod
@@ -81,7 +80,7 @@ func sshClient(user, password, host, key string, port int, cipherList []string) 
 	if key == "" {
 		auth = append(auth, ssh.Password(password))
 	} else {
-		pemBytes, err := ioutil.ReadFile(key)
+		pemBytes, err := os.ReadFile(key)
 		if err != nil {
 			return nil, err
 		}
@@ -115,6 +114,9 @@ func sshClient(user, password, host, key string, port int, cipherList []string) 
 		Timeout: 30 * time.Second,
 		Config:  config,
 		HostKeyCallback: func(hostname string, remote net.Addr, key ssh.PublicKey) error {
+			// WARNING: 不验证主机密钥存在安全风险，可能受到中间人攻击
+			// 在生产环境中应该验证主机密钥
+			log.Warnf("SSH connection to %s:%s without host key verification (security risk)", hostname, remote.String())
 			return nil
 		},
 	}
@@ -128,7 +130,7 @@ func sshClient(user, password, host, key string, port int, cipherList []string) 
 	return client, nil
 }
 
-//sshSession 构建一个SSH的终端会话
+// sshSession 构建一个SSH的终端会话
 func sshSession(user, password, host, key string, port int) (*ssh.Session, error) {
 	var client *ssh.Client
 	var err error
@@ -157,7 +159,7 @@ func sshSession(user, password, host, key string, port int) (*ssh.Session, error
 	return session, nil
 }
 
-//构建一个Sftp的客户端
+// 构建一个Sftp的客户端
 func sftpConnect(user, password, host, key string, port int) (*sftp.Client, error) {
 	sess, err := sshClient(user, password, host, key, port, nil)
 	if err != nil {
