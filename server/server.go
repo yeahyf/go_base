@@ -12,13 +12,13 @@ import (
 	"github.com/yeahyf/go_base/log"
 )
 
-//GracefulServer 定义Server
+// GracefulServer 定义Server
 type GracefulServer struct {
 	Server           *http.Server
 	shutdownFinished chan struct{}
 }
 
-//ListenAndServe 启动服务
+// ListenAndServe 启动服务
 func (s *GracefulServer) listenAndServe() (err error) {
 	if s.shutdownFinished == nil {
 		s.shutdownFinished = make(chan struct{})
@@ -36,10 +36,10 @@ func (s *GracefulServer) listenAndServe() (err error) {
 	return
 }
 
-//WaitForExitingSignal 等待退出的信号
+// WaitForExitingSignal 等待退出的信号
 func (s *GracefulServer) waitForExitingSignal(timeout time.Duration) {
 	var waiter = make(chan os.Signal, 1) // buffered channel
-	signal.Notify(waiter, os.Interrupt, syscall.SIGTERM, syscall.SIGKILL, syscall.SIGINT)
+	signal.Notify(waiter, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
 
 	<-waiter
 
