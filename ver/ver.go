@@ -1,6 +1,7 @@
 package ver
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/signal"
@@ -33,11 +34,20 @@ func (v Version) Debug() {
 	}
 }
 
-func (v Version) Clean(clear func()) {
+func (v Version) Clean(clear func()) context.CancelFunc {
 	notify := make(chan os.Signal, 1)
-	signal.Notify(notify, os.Interrupt, syscall.SIGTERM, syscall.SIGKILL)
+	signal.Notify(notify, os.Interrupt, syscall.SIGTERM)
+
+	ctx, cancel := context.WithCancel(context.Background())
+
 	go func() {
-		<-notify
-		clear()
+		select {
+		case <-notify:
+			clear()
+		case <-ctx.Done():
+			return
+		}
 	}()
+
+	return cancel
 }
