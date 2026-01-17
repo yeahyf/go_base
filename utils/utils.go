@@ -25,7 +25,7 @@ func GetBytesForInt64(t uint64) []byte {
 
 // GetInt64FromBytes 将bytes转为int64
 func GetInt64FromBytes(cn []byte) int64 {
-	if cn == nil || len(cn) < 8 {
+	if len(cn) < 8 {
 		return 0
 	}
 	return int64(binary.LittleEndian.Uint64(cn))
