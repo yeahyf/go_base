@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path"
 	"strings"
@@ -26,6 +25,8 @@ var errorLog *zap.Logger
 var warnLog *zap.Logger
 var atom zap.AtomicLevel
 var logConfigFile string
+var lastModTime time.Time
+var encoderConfig zapcore.EncoderConfig
 
 const (
 	LevelDebug = "debug"
@@ -67,7 +68,12 @@ func SetLogConf(configFile *string) {
 		panic(err)
 	}
 
-	//fmt.Println("Start set log config ... ")
+	fileInfo, err := os.Stat(logConfigFile)
+	if err != nil {
+		panic(err)
+	}
+	lastModTime = fileInfo.ModTime()
+
 	logConfig := make([]LevelConfig, 3)
 
 	config := Config{
@@ -79,7 +85,24 @@ func SetLogConf(configFile *string) {
 		panic(err)
 	} else {
 		atom = zap.NewAtomicLevel()
+		initEncoderConfig()
 		initConfig(&config)
+	}
+}
+
+func initEncoderConfig() {
+	encoderConfig = zapcore.EncoderConfig{
+		TimeKey:       "time",
+		NameKey:       "logger",
+		CallerKey:     "linenum",
+		MessageKey:    "msg",
+		StacktraceKey: "stacktrace",
+
+		LineEnding:     zapcore.DefaultLineEnding,
+		EncodeTime:     zapcore.ISO8601TimeEncoder,
+		EncodeDuration: zapcore.StringDurationEncoder,
+		EncodeName:     zapcore.FullNameEncoder,
+		EncodeCaller:   zapcore.ShortCallerEncoder,
 	}
 }
 
@@ -123,8 +146,16 @@ func initConfig(config *Config) {
 func reSetLevel() {
 	for {
 		time.Sleep(time.Second * 30)
-		//Debug("start reload log configf file ...")
-		data, err := ioutil.ReadFile(logConfigFile)
+		fileInfo, err := os.Stat(logConfigFile)
+		if err != nil {
+			Error("Stat log config file Error", err)
+			continue
+		}
+		if fileInfo.ModTime().Equal(lastModTime) {
+			continue
+		}
+		lastModTime = fileInfo.ModTime()
+		data, err := os.ReadFile(logConfigFile)
 		if err != nil {
 			Error("Read log config file Error", err)
 			continue
@@ -168,22 +199,6 @@ func initLogger(logConfig *LevelConfig) (logger *zap.Logger) {
 		}
 	}
 	writeSyncer := zapcore.AddSync(hook)
-	encoderConfig := zapcore.EncoderConfig{
-		TimeKey: "time",
-		// LevelKey:      "level",
-		NameKey:       "logger",
-		CallerKey:     "linenum",
-		MessageKey:    "msg",
-		StacktraceKey: "stacktrace",
-
-		LineEnding: zapcore.DefaultLineEnding,
-		// EncodeLevel:    zapcore.LowercaseLevelEncoder,  // 小写编码器
-		EncodeTime:     zapcore.ISO8601TimeEncoder,    // ISO8601 UTC 时间格式
-		EncodeDuration: zapcore.StringDurationEncoder, //
-		//	EncodeCaller:   zapcore.FullCallerEncoder,      // 全路径编码器
-		EncodeName:   zapcore.FullNameEncoder,
-		EncodeCaller: zapcore.ShortCallerEncoder,
-	}
 
 	core := zapcore.NewCore(
 		zapcore.NewConsoleEncoder(encoderConfig),
@@ -233,42 +248,62 @@ func initRotateLog(logConfig *LevelConfig) (io.Writer, error) {
 
 // Debug 输出日志
 func Debug(msg ...interface{}) {
-	info := fmt.Sprint(msg...)
-	debugLog.Debug(fmt.Sprintf("%s", info))
+	if !atom.Enabled(zapcore.DebugLevel) {
+		return
+	}
+	debugLog.Debug(fmt.Sprint(msg...))
 }
 
 // Debugf 按照格式输出日志
 func Debugf(format string, msg ...interface{}) {
-	debugLog.Debug(fmt.Sprintf(format, msg...))
+	if !atom.Enabled(zapcore.DebugLevel) {
+		return
+	}
+	debugLog.Sugar().Debugf(format, msg...)
 }
 
 // Info 输出日志
 func Info(msg ...interface{}) {
-	info := fmt.Sprint(msg...)
-	infoLog.Info(fmt.Sprintf("%s", info))
+	if !atom.Enabled(zapcore.InfoLevel) {
+		return
+	}
+	infoLog.Info(fmt.Sprint(msg...))
 }
 
 // Infof 按照格式输出日志
 func Infof(format string, msg ...interface{}) {
-	infoLog.Info(fmt.Sprintf(format, msg...))
+	if !atom.Enabled(zapcore.InfoLevel) {
+		return
+	}
+	infoLog.Sugar().Infof(format, msg...)
 }
 
 // Error 输出日志
 func Error(msg ...interface{}) {
-	info := fmt.Sprint(msg...)
-	errorLog.Error(fmt.Sprintf("%s", info))
+	if !atom.Enabled(zapcore.ErrorLevel) {
+		return
+	}
+	errorLog.Error(fmt.Sprint(msg...))
 }
 
 // Errorf 按照格式输出日志
 func Errorf(format string, msg ...interface{}) {
-	errorLog.Error(fmt.Sprintf(format, msg...))
+	if !atom.Enabled(zapcore.ErrorLevel) {
+		return
+	}
+	errorLog.Sugar().Errorf(format, msg...)
 }
 
 func Warn(msg ...interface{}) {
-	info := fmt.Sprint(msg...)
-	warnLog.Warn(fmt.Sprintf("%s", info))
+	if !atom.Enabled(zapcore.WarnLevel) {
+		return
+	}
+	warnLog.Warn(fmt.Sprint(msg...))
 }
 
 func Warnf(format string, msg ...interface{}) {
-	warnLog.Warn(fmt.Sprintf(format, msg...))
+	if !atom.Enabled(zapcore.WarnLevel) {
+		return
+	}
+	warnLog.Sugar().Warnf(format, msg...)
 }
