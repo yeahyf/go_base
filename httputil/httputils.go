@@ -25,16 +25,25 @@ func Handler(httpWrapper Wrapper) func(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// ExRespHandler 像客户端输出错误信息
+// ExRespHandler 向客户端输出错误信息
 func ExRespHandler(w http.ResponseWriter, err error) {
-	log.Error("Code="+strconv.Itoa(int(err.(*ept.Error).Code)), ", Info="+err.(*ept.Error).Message)
 	w.Header().Add(HeadServerEx, "1")
-	resp := &ept.ErrorResponse{
-		Code: err.(*ept.Error).Code,
-		Info: err.(*ept.Error).Message,
+	var resp *ept.ErrorResponse
+	if eptErr, ok := err.(*ept.Error); ok {
+		log.Error("Code="+strconv.Itoa(int(eptErr.Code)), ", Info="+eptErr.Message)
+		resp = &ept.ErrorResponse{
+			Code: eptErr.Code,
+			Info: eptErr.Message,
+		}
+	} else {
+		log.Errorf("unknown error: %v", err)
+		resp = &ept.ErrorResponse{
+			Code: 1,
+			Info: err.Error(),
+		}
 	}
 	data, _ := proto.Marshal(resp)
-	w.Write(data)
+	_, _ = w.Write(data)
 }
 
 // ReqHandle 组合处理

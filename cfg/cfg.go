@@ -83,6 +83,9 @@ func Load(configPath *string) {
 	}
 	p = NewProperties()
 	err = p.Load(bytes.NewReader(data))
+	if err != nil {
+		log.Errorf("couldn't load config file, %v", err)
+	}
 }
 
 // GetString 获取字符串

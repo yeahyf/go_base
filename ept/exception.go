@@ -5,7 +5,7 @@ import (
 	"runtime/debug"
 )
 
-//Error 自定义错误类型
+// Error 自定义错误类型
 type Error struct {
 	Code    uint32 //错误代码采用1000-9999整形
 	Message string //消息的说明
@@ -25,7 +25,7 @@ func NewWrapper(code uint32, err error) *Error {
 	}
 }
 
-//实现错误接口
+// 实现错误接口
 func (err *Error) Error() string {
 	return err.Message
 }

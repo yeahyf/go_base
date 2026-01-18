@@ -113,14 +113,23 @@ func AbstractHandler(httpWrapper Wrapper, repeatCheck IsRepeatReq, appKeyCheck I
 
 // ExRespHandler 异常响应处理
 func ExRespHandler(w http.ResponseWriter, err error) {
-	log.Error("code="+strconv.Itoa(int(err.(*ept.Error).Code)), ", info="+err.(*ept.Error).Message)
 	w.Header().Add(HeadServerEx, "1")
-	resp := &ept.ErrorResponse{
-		Code: err.(*ept.Error).Code,
-		Info: err.(*ept.Error).Message,
+	var resp *ept.ErrorResponse
+	if eptErr, ok := err.(*ept.Error); ok {
+		log.Error("code="+strconv.Itoa(int(eptErr.Code)), ", info="+eptErr.Message)
+		resp = &ept.ErrorResponse{
+			Code: eptErr.Code,
+			Info: eptErr.Message,
+		}
+	} else {
+		log.Errorf("unknown error: %v", err)
+		resp = &ept.ErrorResponse{
+			Code: 1,
+			Info: err.Error(),
+		}
 	}
 	data, _ := proto.Marshal(resp)
-	w.Write(data)
+	_, _ = w.Write(data)
 }
 
 func ReqBaseCheck(r *http.Request) (*ReqData, error) {

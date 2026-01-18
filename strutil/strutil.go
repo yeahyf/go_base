@@ -10,27 +10,35 @@ import (
 )
 
 // Bytes2str byte数组转化为字符串，返回字符串
+// 使用 Go 1.20+ 推荐的 unsafe.String 方式，更安全
 func Bytes2str(b []byte) string {
-	return *(*string)(unsafe.Pointer(&b))
+	if len(b) == 0 {
+		return ""
+	}
+	return unsafe.String(unsafe.SliceData(b), len(b))
 }
 
 // Bytes2Str byte数组转化为字符串，返回字符串引用
 func Bytes2Str(b []byte) *string {
-	return (*string)(unsafe.Pointer(&b))
+	s := Bytes2str(b)
+	return &s
 }
 
 // Str2bytes 字符串转化为byte数组
+// 使用 Go 1.20+ 推荐的 unsafe.Slice 方式，更安全
 func Str2bytes(s string) []byte {
-	x := (*[2]uintptr)(unsafe.Pointer(&s)) // 获取s的起始地址开始后的两个uintptr指针
-	h := [3]uintptr{x[0], x[1], x[1]}      // 构造三个指针数组
-	return *(*[]byte)(unsafe.Pointer(&h))
+	if len(s) == 0 {
+		return nil
+	}
+	return unsafe.Slice(unsafe.StringData(s), len(s))
 }
 
 // String2bytes 字符串转化为byte数组
 func String2bytes(s *string) []byte {
-	x := (*[2]uintptr)(unsafe.Pointer(s)) // 获取s的起始地址开始后的两个 uintptr 指针
-	h := [3]uintptr{x[0], x[1], x[1]}     // 构造三个指针数组
-	return *(*[]byte)(unsafe.Pointer(&h))
+	if s == nil || len(*s) == 0 {
+		return nil
+	}
+	return unsafe.Slice(unsafe.StringData(*s), len(*s))
 }
 
 func SortString(list []string) {
