@@ -20,14 +20,24 @@ import (
 	"github.com/yeahyf/go_base/log"
 )
 
-const (
-	//URL = "http://ld-wz9nuxthmu1a8701f-proxy-lindorm-pub.lindorm.rds.aliyuncs.com:9190"
-	// URL       = "ld-wz9nuxthmu1a8701f-proxy-lindorm-pub.lindorm.rds.aliyuncs.com:30020"
-	URL       = "http://ld-t4ndtn7r3609s4cuu-proxy-thrift-pub.lindorm.aliyuncs.com:9190"
+var (
+	// URL       = getEnvOrFatal("HBASE_URL")
+	// USER      = getEnvOrFatal("HBASE_USER")
+	// PASSWORD  = getEnvOrFatal("HBASE_PASSWORD")
+	// SpaceName = getEnvOrFatal("HBASE_NAMESPACE")
+	URL       = "http://ld-wz9nuxthmu1a8701f-proxy-lindorm-pub.lindorm.rds.aliyuncs.com:9190"
 	USER      = "root"
-	PASSWORD  = "UcYTFQILYniS"
-	SpaceName = "ass"
+	PASSWORD  = "pfneaaU1"
+	SpaceName = "ass_test"
 )
+
+func getEnvOrFatal(envKey string) string {
+	value := os.Getenv(envKey)
+	if value == "" {
+		panic(fmt.Sprintf("Environment variable %s is required but not set", envKey))
+	}
+	return value
+}
 
 var (
 	archiveFamilyName  = "a"
@@ -36,7 +46,6 @@ var (
 )
 
 var conf = &PoolConf{
-	SpaceName,
 	URL,
 	USER,
 	PASSWORD,
@@ -61,7 +70,7 @@ func TestCreateNameSpace(t *testing.T) {
 	}
 	defer pool.Put(conn)
 
-	err = conn.CreateNameSpace()
+	err = conn.CreateNameSpace("game_asset")
 	if err != nil {
 		t.Fatal(err)
 		return
@@ -81,7 +90,7 @@ func TestDeleteNameSpace(t *testing.T) {
 	}
 	defer pool.Put(conn)
 
-	err = conn.DeleteNameSpace()
+	err = conn.DeleteNameSpace(SpaceName)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -101,7 +110,7 @@ func TestListAllTable(t *testing.T) {
 	}
 	defer pool.Put(conn)
 
-	list, err := conn.ListAllTable()
+	list, err := conn.ListAllTable(SpaceName)
 	if err != nil {
 		t.Fatal(err)
 		return
@@ -127,9 +136,9 @@ func TestCreateTable(t *testing.T) {
 	}
 	defer pool.Put(conn)
 
-	tableName := "playcity"
+	tableName := "wars0"
 	familys := []string{"a", "e"}
-	err = conn.CreateTable(tableName, familys)
+	err = conn.CreateTable(SpaceName, tableName, familys)
 	if err != nil {
 		t.Fatal(err)
 		return
@@ -151,7 +160,7 @@ func TestExistsTable(t *testing.T) {
 
 	tableName := "playcity1"
 
-	result, err := conn.ExistTable(tableName)
+	result, err := conn.ExistTable(SpaceName, tableName)
 	if err != nil {
 		t.Fatal(err)
 		return
@@ -175,7 +184,7 @@ func TestCreateTableWithVersion(t *testing.T) {
 
 	tableName := "new_with_version"
 	familys := []string{"a", "e"}
-	err = conn.CreateTableWithVer(tableName, familys, 10)
+	err = conn.CreateTableWithVer(SpaceName, tableName, familys, 10)
 	if err != nil {
 		t.Fatal(err)
 		return
@@ -196,8 +205,8 @@ func TestDeleteTable(t *testing.T) {
 	defer pool.Put(conn)
 
 	tableName := "playcity"
-	err = conn.DisableTable(tableName)
-	err = conn.DeleteTable(tableName)
+	err = conn.DisableTable(SpaceName, tableName)
+	err = conn.DeleteTable(SpaceName, tableName)
 	if err != nil {
 		t.Fatal(err)
 		return
@@ -220,21 +229,16 @@ func TestFetchRow(t *testing.T) {
 	}
 	defer pool.Put(conn)
 
-	tableName := "fsaq0"
-	rowKey := "4sa76nt10w1:0"
+	tableName := "wars0"
+	rowKey := "4gszshxwmx6:0"
 
 	columnKeys := make(map[string][]string, 4)
-	columnKeys["a"] = []string{"z9"}
+	columnKeys["a"] = []string{"abnormal", "abnormal_time", "abnormal_reason", "abnormal_remark"}
 
-	m, err := conn.FetchRow(tableName, rowKey, columnKeys)
+	m, err := conn.FetchRow("ass_test", tableName, rowKey, columnKeys)
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	if _, ok := m["z9"]; ok {
-		println("=====")
-	}
-
 	result := make(map[string]string)
 	for k, v := range m {
 		value, e := strutil.Gunzip(v)
@@ -244,12 +248,8 @@ func TestFetchRow(t *testing.T) {
 			result[k] = string(value)
 		}
 	}
-	//content2, _ := json.Marshal(result["z8"])
-	//content1, _ := json.Marshal(result)
-	//println(strings.ReplaceAll(string(content1), "\\", ""))
-	//println(strings.ReplaceAll(string(content2), "\\", ""))
 	for k, v := range result {
-		fmt.Printf("%s:%s", k, v)
+		fmt.Printf("%s:%s\n", k, v)
 	}
 
 }
@@ -288,10 +288,12 @@ func TestDeleteRow(t *testing.T) {
 	}
 	defer pool.Put(conn)
 
-	tableName := "fsaq0"
-	rowKey := "4tpsjvaebx4:0"
+	tableName := "wars0"
+	rowKey := "4gszshxwmx6:0"
 
-	err = conn.DeleteRow(tableName, rowKey)
+	columnKeys := make(map[string][]string, 4)
+	columnKeys["a"] = []string{"abnormal", "abnormal_time", "abnormal_reason", "abnormal_remark"}
+	err = conn.DeleteColumns(SpaceName, tableName, rowKey, columnKeys)
 	if err != nil {
 		if !errors.Is(err, RowNotFoundErr) {
 			t.Fatal(err)
@@ -362,7 +364,7 @@ func TestUpdateRow(t *testing.T) {
 		m[archiveFamilyName] = bMap
 		m[extendFamilyName] = extends
 
-		err = conn.UpdateRow(tableName, rowKey, m)
+		err = conn.UpdateRow(SpaceName, tableName, rowKey, m)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -392,7 +394,7 @@ func TestExistRow(t *testing.T) {
 	tableName := "oncn1"
 	rowKey := "4le91psw1p1:1"
 
-	exist, err := conn.ExistRow(tableName, rowKey)
+	exist, err := conn.ExistRow(SpaceName, tableName, rowKey)
 	if err != nil {
 		t.Fatal(err)
 		t.Log(exist)
@@ -423,7 +425,7 @@ func TestDeleteColumns(t *testing.T) {
 	m["a"] = s
 	// m["e"] = t1
 
-	err = conn.DeleteColumns(tableName, rowKey, m)
+	err = conn.DeleteColumns("", tableName, rowKey, m)
 	if err != nil {
 		t.Fatal(err)
 	} else {
@@ -463,7 +465,7 @@ func TestFetchRowWithVersion(t *testing.T) {
 		tableName := record[4]
 		userid := record[0]
 		rowKey := userid[:len(userid)-1] + ":" + userid[len(userid)-1:]
-		m, err := conn.FetchRowByVer(tableName, rowKey, nil, 11)
+		m, err := conn.FetchRowByVer(SpaceName, tableName, rowKey, nil, 11)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -523,7 +525,7 @@ func TestUpdateAbnormalCount(t *testing.T) {
 
 		fmt.Println(tableName, rowKey, values)
 		// time.Sleep(3 * time.Minute)
-		err = conn.UpdateRow(tableName, rowKey, values)
+		err = conn.UpdateRow(SpaceName, tableName, rowKey, values)
 		if err != nil {
 			fmt.Println(record)
 		}

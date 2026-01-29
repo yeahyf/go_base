@@ -21,23 +21,23 @@ var PoolClosedErr = errors.New("connection pool closed")
 // 所有表操作方法都支持可选的命名空间参数（通过可变参数传递）
 // 如果不提供命名空间参数，则使用连接创建时指定的默认命名空间
 type Connection interface {
-	CreateNameSpace(namespace ...string) error //创建表空间
-	DeleteNameSpace(namespace ...string) error //删除表空间
+	CreateNameSpace(namespace string) error //创建表空间
+	DeleteNameSpace(namespace string) error //删除表空间
 
-	CreateTable(tableName string, familyNames []string, namespace ...string) error                      //创建表
-	CreateTableWithVer(tableName string, familyNames []string, maxVer int32, namespace ...string) error //创建表
-	ExistTable(tableName string, namespace ...string) (bool, error)                                     //表是否存在
-	DisableTable(tableName string, namespace ...string) error                                           //停用表
-	EnableTable(tableName string, namespace ...string) error                                            //启用表
-	DeleteTable(tableName string, namespace ...string) error                                            //删除表
-	ListAllTable(namespace ...string) ([]string, error)                                                 //列出所有的表名
+	CreateTable(namespace, tableName string, familyNames []string) error                      //创建表
+	CreateTableWithVer(namespace, tableName string, familyNames []string, maxVer int32) error //创建表
+	ExistTable(namespace, tableName string) (bool, error)                                     //表是否存在
+	DisableTable(namespace, tableName string) error                                           //停用表
+	EnableTable(namespace, tableName string) error                                            //启用表
+	DeleteTable(namespace, tableName string) error                                            //删除表                                                            //删除表
+	ListAllTable(namespace string) ([]string, error)                                          //列出所有的表名
 
-	UpdateRow(tableName, rowKey string, values map[string]map[string][]byte, namespace ...string) error                                   //更新存档
-	FetchRow(tableName, rowKey string, columnKeys map[string][]string, namespace ...string) (map[string][]byte, error)                    //获取存档
-	FetchRowByVer(tableName, rowKey string, columnKeys map[string][]string, maxVer int32, namespace ...string) (map[string][]byte, error) //获取存档
-	DeleteRow(tableName, rowKey string, namespace ...string) error                                                                        //删除存档
-	DeleteColumns(tableName, rowKey string, columnKeys map[string][]string, namespace ...string) error                                    //删除存档中的一些Key
-	ExistRow(tableName string, rowKey string, namespace ...string) (bool, error)
+	UpdateRow(namespace, tableName, rowKey string, values map[string]map[string][]byte) error                                   //更新存档
+	FetchRow(namespace, tableName, rowKey string, columnKeys map[string][]string) (map[string][]byte, error)                    //获取存档
+	FetchRowByVer(namespace, tableName, rowKey string, columnKeys map[string][]string, maxVer int32) (map[string][]byte, error) //获取存档
+	DeleteRow(namespace, tableName, rowKey string) error                                                                        //删除存档
+	DeleteColumns(namespace, tableName, rowKey string, columnKeys map[string][]string) error                                    //删除存档中的一些Key
+	ExistRow(namespace, tableName string, rowKey string) (bool, error)
 
 	isOpen() bool                   //连接是否打开
 	open() error                    //打开连接
@@ -46,7 +46,7 @@ type Connection interface {
 }
 
 // ConnFactory 创建连接资源的工厂方法
-type ConnFactory func(url, user, passwd, spaceName string) (Connection, error)
+type ConnFactory func(url, user, passwd string) (Connection, error)
 
 // CommonConn 连接结构体，
 type CommonConn struct {
@@ -65,7 +65,7 @@ type ConnectionPool struct {
 	notify      chan struct{}    //获取不到连接时候的通知
 }
 
-func newConnPool(factory func(url, user, passwd, spaceName string) (Connection, error), conf *PoolConf) *ConnectionPool {
+func newConnPool(factory func(url, user, passwd string) (Connection, error), conf *PoolConf) *ConnectionPool {
 	if conf.MaxOpenSize <= 0 {
 		conf.MaxOpenSize = 50
 	}
@@ -79,6 +79,9 @@ func newConnPool(factory func(url, user, passwd, spaceName string) (Connection, 
 	if conf.MinIdleSize >= conf.MaxOpenSize {
 		conf.MinIdleSize = conf.MaxOpenSize
 	}
+	if conf.MaxIdleSize <= 0 {
+		conf.MaxIdleSize = conf.MinIdleSize * 2
+	}
 	// 参数检查后，设置连接池属性
 	cp := &ConnectionPool{
 		mutex:       sync.Mutex{},
@@ -90,7 +93,7 @@ func newConnPool(factory func(url, user, passwd, spaceName string) (Connection, 
 	}
 	//初始化连接池中的基本连接
 	for i := 0; i < conf.MinIdleSize; i++ {
-		connRes, err := cp.connFactory(conf.Address, conf.User, conf.Passwd, conf.SpaceName)
+		connRes, err := cp.connFactory(conf.Address, conf.User, conf.Passwd)
 		//如果启动的时候都无法创建连接,说明问题严重
 		if err != nil {
 			cp.Close()
@@ -148,7 +151,7 @@ func (pool *ConnectionPool) balanceControl() {
 				log.Debugf("current used: %d", used)
 			}
 			connRes, err := pool.connFactory(pool.conf.Address,
-				pool.conf.User, pool.conf.Passwd, pool.conf.SpaceName)
+				pool.conf.User, pool.conf.Passwd)
 			if err != nil {
 				log.Errorf("error in newConnPool while calling connFactory %v", err)
 				continue
@@ -194,8 +197,9 @@ func (pool *ConnectionPool) Get(ctx context.Context) (conn Connection, err error
 				return nil, PoolClosedErr
 			}
 			// 拿到的连接已经超时，将其关闭，继续取下一个
-			if time.Since(hbaseConn.idleTime) > pool.conf.MaxIdleTime ||
-				(pool.conf.MaxIdleTime != 0 && hbaseConn.conn.isOverdue(pool.conf.MaxIdleTime)) {
+			// 空闲超时或生命周期过期，关闭连接
+			if (pool.conf.MaxIdleTime > 0 && time.Since(hbaseConn.idleTime) > pool.conf.MaxIdleTime) ||
+				(pool.conf.MaxLifeTime > 0 && hbaseConn.conn.isOverdue(pool.conf.MaxLifeTime)) {
 				hbaseConn.conn.close()
 				continue
 			}
@@ -259,10 +263,10 @@ func (pool *ConnectionPool) Close() {
 // 原则上一个连接池是连接到一个Hbase服务器的，与命名空间无关
 // 但是为了简化处理，将一个命名空间封装到Pool的配置中
 type PoolConf struct {
-	SpaceName string //命名空间
-	Address   string //hbase地址
-	User      string //用户名
-	Passwd    string //密码
+	//SpaceName string //命名空间
+	Address string //hbase地址
+	User    string //用户名
+	Passwd  string //密码
 
 	MinIdleSize int           //最小空闲数
 	MaxIdleSize int           //最大空闲数
@@ -278,10 +282,10 @@ func NewPoolByParam(spaceName, address, user, passwd string, minIdleSize, maxIdl
 		panic("hbase spaceName not set")
 	}
 	poolConf := &PoolConf{
-		SpaceName: spaceName,
-		Address:   address,
-		User:      user,
-		Passwd:    passwd,
+		//SpaceName: spaceName,
+		Address: address,
+		User:    user,
+		Passwd:  passwd,
 
 		MinIdleSize: minIdleSize,
 		MaxIdleSize: maxIdleSize,

@@ -32,44 +32,28 @@ func convertError(err error) error {
 	return err
 }
 
-// getNamespace 获取命名空间，支持可选的命名空间参数
-// 如果 namespace 为空，使用默认的 SpaceName
-func (hb *ThriftHbaseConn) getNamespace(namespace ...string) string {
-	if len(namespace) > 0 && namespace[0] != "" {
-		return namespace[0]
-	}
-	return hb.SpaceName
-}
-
-// buildTableName 构建表名，支持可选的命名空间
-// 如果 namespace 为空，使用默认的 SpaceName
-func (hb *ThriftHbaseConn) buildTableName(tableName string, namespace ...string) []byte {
-	ns := hb.getNamespace(namespace...)
+// buildTableName 构建表名，使用指定的命名空间
+func (hb *ThriftHbaseConn) buildTableName(namespace, tableName string) []byte {
 	// 预分配大小以提高性能
-	buf := make([]byte, 0, len(ns)+1+len(tableName))
-	buf = append(buf, ns...)
+	buf := make([]byte, 0, len(namespace)+1+len(tableName))
+	buf = append(buf, namespace...)
 	buf = append(buf, ':')
 	buf = append(buf, tableName...)
 	return buf
 }
 
-// buildTTableName 构建 TTableName，支持可选的命名空间
-// 如果 namespace 为空，使用默认的 SpaceName
-func (hb *ThriftHbaseConn) buildTTableName(tableName string, namespace ...string) *th.TTableName {
-	ns := hb.getNamespace(namespace...)
-	return &th.TTableName{Ns: []byte(ns), Qualifier: []byte(tableName)}
+// buildTTableName 构建 TTableName，使用指定的命名空间
+func (hb *ThriftHbaseConn) buildTTableName(namespace, tableName string) *th.TTableName {
+	return &th.TTableName{Ns: []byte(namespace), Qualifier: []byte(tableName)}
 }
 
 // CreateNameSpace 创建命名空间
-// 如果是已经创建过,返回NSExistErr,如果命名空间不存在则创建
-// namespace 为可选的命名空间参数，如果不提供则使用默认的 SpaceName
-func (hb *ThriftHbaseConn) CreateNameSpace(namespace ...string) error {
-	ns := hb.getNamespace(namespace...)
-	descriptor, err := hb.ServiceClient.GetNamespaceDescriptor(context.Background(), ns)
+func (hb *ThriftHbaseConn) CreateNameSpace(namespace string) error {
+	descriptor, err := hb.ServiceClient.GetNamespaceDescriptor(context.Background(), namespace)
 	if err != nil {
 		// 查询出错，可能是命名空间不存在，尝试创建
 		createErr := hb.ServiceClient.CreateNamespace(context.Background(),
-			&th.TNamespaceDescriptor{Name: ns})
+			&th.TNamespaceDescriptor{Name: namespace})
 		if createErr != nil {
 			// 创建失败，返回原始查询错误（可能包含更多信息）
 			return convertError(err)
@@ -82,15 +66,13 @@ func (hb *ThriftHbaseConn) CreateNameSpace(namespace ...string) error {
 	}
 	// descriptor 为 nil 且 err 为 nil，说明命名空间不存在，创建它
 	err = hb.ServiceClient.CreateNamespace(context.Background(),
-		&th.TNamespaceDescriptor{Name: ns})
+		&th.TNamespaceDescriptor{Name: namespace})
 	return convertError(err)
 }
 
 // DeleteNameSpace 删除命名空间
-// namespace 为可选的命名空间参数，如果不提供则使用默认的 SpaceName
-func (hb *ThriftHbaseConn) DeleteNameSpace(namespace ...string) error {
-	ns := hb.getNamespace(namespace...)
-	descriptor, err := hb.ServiceClient.GetNamespaceDescriptor(context.Background(), ns)
+func (hb *ThriftHbaseConn) DeleteNameSpace(namespace string) error {
+	descriptor, err := hb.ServiceClient.GetNamespaceDescriptor(context.Background(), namespace)
 	if err != nil {
 		return convertError(err)
 	}
@@ -98,20 +80,18 @@ func (hb *ThriftHbaseConn) DeleteNameSpace(namespace ...string) error {
 		return NSNotExistErr
 	}
 	// 直接删除,注意删除需要所有的表都被删除掉才可以删掉命名空间
-	err = hb.ServiceClient.DeleteNamespace(context.Background(), ns)
+	err = hb.ServiceClient.DeleteNamespace(context.Background(), namespace)
 	return convertError(err)
 }
 
 // CreateTable 创建表,不带版本,只存储最新的数据
-// namespace 为可选的命名空间参数，如果不提供则使用默认的 SpaceName
-func (hb *ThriftHbaseConn) CreateTable(tableName string, familyNames []string, namespace ...string) error {
-	return hb.CreateTableWithVer(tableName, familyNames, 0, namespace...)
+func (hb *ThriftHbaseConn) CreateTable(namespace, tableName string, familyNames []string) error {
+	return hb.CreateTableWithVer(namespace, tableName, familyNames, 0)
 }
 
 // ExistTable 判断表是否存在
-// namespace 为可选的命名空间参数，如果不提供则使用默认的 SpaceName
-func (hb *ThriftHbaseConn) ExistTable(tableName string, namespace ...string) (bool, error) {
-	tbName := hb.buildTTableName(tableName, namespace...)
+func (hb *ThriftHbaseConn) ExistTable(namespace, tableName string) (bool, error) {
+	tbName := hb.buildTTableName(namespace, tableName)
 	result, err := hb.ServiceClient.TableExists(context.Background(), tbName)
 	if err != nil {
 		return false, convertError(err)
@@ -121,9 +101,8 @@ func (hb *ThriftHbaseConn) ExistTable(tableName string, namespace ...string) (bo
 
 // CreateTableWithVer 创建表，增加历史版本，一般情况下是不需要直接调用该接口的
 // maxVersion 可以保留的最多的版本数，每次修改都会生成一个新的版本，并且必须是全部所有字段统一更新
-// namespace 为可选的命名空间参数，如果不提供则使用默认的 SpaceName
-func (hb *ThriftHbaseConn) CreateTableWithVer(tableName string, familyNames []string, maxVersion int32, namespace ...string) error {
-	tbName := hb.buildTTableName(tableName, namespace...)
+func (hb *ThriftHbaseConn) CreateTableWithVer(namespace, tableName string, familyNames []string, maxVersion int32) error {
+	tbName := hb.buildTTableName(namespace, tableName)
 	result, err := hb.ServiceClient.TableExists(context.Background(), tbName)
 	if err != nil {
 		return convertError(err)
@@ -156,9 +135,8 @@ func (hb *ThriftHbaseConn) CreateTableWithVer(tableName string, familyNames []st
 }
 
 // DisableTable 停用表
-// namespace 为可选的命名空间参数，如果不提供则使用默认的 SpaceName
-func (hb *ThriftHbaseConn) DisableTable(tableName string, namespace ...string) error {
-	tbName := hb.buildTTableName(tableName, namespace...)
+func (hb *ThriftHbaseConn) DisableTable(namespace, tableName string) error {
+	tbName := hb.buildTTableName(namespace, tableName)
 	//先判断表是否存在
 	exist, err := hb.ServiceClient.TableExists(context.Background(), tbName)
 	if err != nil {
@@ -179,9 +157,8 @@ func (hb *ThriftHbaseConn) DisableTable(tableName string, namespace ...string) e
 }
 
 // EnableTable 启用表
-// namespace 为可选的命名空间参数，如果不提供则使用默认的 SpaceName
-func (hb *ThriftHbaseConn) EnableTable(tableName string, namespace ...string) error {
-	tbName := hb.buildTTableName(tableName, namespace...)
+func (hb *ThriftHbaseConn) EnableTable(namespace, tableName string) error {
+	tbName := hb.buildTTableName(namespace, tableName)
 	//先判断表是否存在
 	exist, err := hb.ServiceClient.TableExists(context.Background(), tbName)
 	if err != nil {
@@ -202,9 +179,8 @@ func (hb *ThriftHbaseConn) EnableTable(tableName string, namespace ...string) er
 }
 
 // DeleteTable 删除表 必须要具备的条件，1. 表存在，2 表是disabled
-// namespace 为可选的命名空间参数，如果不提供则使用默认的 SpaceName
-func (hb *ThriftHbaseConn) DeleteTable(tableName string, namespace ...string) error {
-	tbName := hb.buildTTableName(tableName, namespace...)
+func (hb *ThriftHbaseConn) DeleteTable(namespace, tableName string) error {
+	tbName := hb.buildTTableName(namespace, tableName)
 	//先判断表是否存在
 	exist, err := hb.ServiceClient.TableExists(context.Background(), tbName)
 	if err != nil {
@@ -228,10 +204,8 @@ func (hb *ThriftHbaseConn) DeleteTable(tableName string, namespace ...string) er
 }
 
 // ListAllTable 列出空间中所有的表名
-// namespace 为可选的命名空间参数，如果不提供则使用默认的 SpaceName
-func (hb *ThriftHbaseConn) ListAllTable(namespace ...string) ([]string, error) {
-	ns := hb.getNamespace(namespace...)
-	list, err := hb.ServiceClient.GetTableNamesByNamespace(context.Background(), ns)
+func (hb *ThriftHbaseConn) ListAllTable(namespace string) ([]string, error) {
+	list, err := hb.ServiceClient.GetTableNamesByNamespace(context.Background(), namespace)
 	if err != nil {
 		return nil, convertError(err)
 	}
@@ -243,8 +217,7 @@ func (hb *ThriftHbaseConn) ListAllTable(namespace ...string) ([]string, error) {
 }
 
 // UpdateRow 更新row
-// namespace 为可选的命名空间参数，如果不提供则使用默认的 SpaceName
-func (hb *ThriftHbaseConn) UpdateRow(tableName, rowKey string, values map[string]map[string][]byte, namespace ...string) error {
+func (hb *ThriftHbaseConn) UpdateRow(namespace, tableName, rowKey string, values map[string]map[string][]byte) error {
 	//做DML操作时，表名参数为bytes，表名的规则是namespace + 冒号 + 表名  []byte("ass:tableName")
 	//先计算需要更新的Column的数量
 	number := 0
@@ -263,14 +236,13 @@ func (hb *ThriftHbaseConn) UpdateRow(tableName, rowKey string, values map[string
 		ColumnValues: cv,
 	}
 	//此处需要注意，需要增加NameSpace前缀
-	tbName := hb.buildTableName(tableName, namespace...)
+	tbName := hb.buildTableName(namespace, tableName)
 	err := hb.ServiceClient.Put(context.Background(), tbName, tPut)
 	return convertError(err)
 }
 
 // FetchRow 获取一条Row
-// namespace 为可选的命名空间参数，如果不提供则使用默认的 SpaceName
-func (hb *ThriftHbaseConn) FetchRow(tableName, rowKey string, columnKeys map[string][]string, namespace ...string) (map[string][]byte, error) {
+func (hb *ThriftHbaseConn) FetchRow(namespace, tableName, rowKey string, columnKeys map[string][]string) (map[string][]byte, error) {
 	//做DML操作时，表名参数为bytes，表名的规则是namespace + 冒号 + 表名
 	var tGet *th.TGet
 	//根据参数获取不同的数据
@@ -296,7 +268,7 @@ func (hb *ThriftHbaseConn) FetchRow(tableName, rowKey string, columnKeys map[str
 		}
 	}
 	//此处需要注意，需要增加NameSpace前缀
-	tbName := hb.buildTableName(tableName, namespace...)
+	tbName := hb.buildTableName(namespace, tableName)
 	result, err := hb.ServiceClient.Get(context.Background(), tbName, tGet)
 	if err != nil {
 		return nil, convertError(err)
@@ -309,8 +281,7 @@ func (hb *ThriftHbaseConn) FetchRow(tableName, rowKey string, columnKeys map[str
 }
 
 // FetchRowByVer 按照版本获取一条Row,最新的版本号最小,从1开始（在创建表的时候需要设置版本信息）
-// namespace 为可选的命名空间参数，如果不提供则使用默认的 SpaceName
-func (hb *ThriftHbaseConn) FetchRowByVer(tableName, rowKey string, columnKeys map[string][]string, maxVer int32, namespace ...string) (map[string][]byte, error) {
+func (hb *ThriftHbaseConn) FetchRowByVer(namespace, tableName, rowKey string, columnKeys map[string][]string, maxVer int32) (map[string][]byte, error) {
 	//做DML操作时，表名参数为bytes，表名的规则是namespace + 冒号 + 表名
 	number := 0
 	for _, v := range columnKeys {
@@ -338,7 +309,7 @@ func (hb *ThriftHbaseConn) FetchRowByVer(tableName, rowKey string, columnKeys ma
 		}
 	}
 	//此处需要注意，需要增加NameSpace前缀
-	tbName := hb.buildTableName(tableName, namespace...)
+	tbName := hb.buildTableName(namespace, tableName)
 	result, err := hb.ServiceClient.Get(context.Background(), tbName, tGet)
 	if err != nil {
 		return nil, convertError(err)
@@ -351,9 +322,8 @@ func (hb *ThriftHbaseConn) FetchRowByVer(tableName, rowKey string, columnKeys ma
 }
 
 // ExistRow 判断某行数据是否存在
-// namespace 为可选的命名空间参数，如果不提供则使用默认的 SpaceName
-func (hb *ThriftHbaseConn) ExistRow(tableName string, rowKey string, namespace ...string) (bool, error) {
-	tbName := hb.buildTTableName(tableName, namespace...)
+func (hb *ThriftHbaseConn) ExistRow(namespace, tableName string, rowKey string) (bool, error) {
+	tbName := hb.buildTTableName(namespace, tableName)
 	exist, err := hb.ServiceClient.TableExists(context.Background(), tbName)
 	if err != nil {
 		return false, convertError(err)
@@ -364,16 +334,15 @@ func (hb *ThriftHbaseConn) ExistRow(tableName string, rowKey string, namespace .
 	tGet := &th.TGet{
 		Row: []byte(rowKey),
 	}
-	tbNameBytes := hb.buildTableName(tableName, namespace...)
+	tbNameBytes := hb.buildTableName(namespace, tableName)
 	exist, err = hb.ServiceClient.Exists(context.Background(), tbNameBytes, tGet)
 	return exist, convertError(err)
 }
 
 // DeleteRow 删除某行数据
-// namespace 为可选的命名空间参数，如果不提供则使用默认的 SpaceName
-func (hb *ThriftHbaseConn) DeleteRow(tableName, rowKey string, namespace ...string) error {
+func (hb *ThriftHbaseConn) DeleteRow(namespace, tableName, rowKey string) error {
 	//先判断是否存在再删除
-	exist, err := hb.ExistRow(tableName, rowKey, namespace...)
+	exist, err := hb.ExistRow(namespace, tableName, rowKey)
 	if err != nil {
 		return convertError(err)
 	}
@@ -386,20 +355,19 @@ func (hb *ThriftHbaseConn) DeleteRow(tableName, rowKey string, namespace ...stri
 		DeleteType: th.TDeleteType_DELETE_FAMILY, //删除整个Row
 	}
 	//此处需要注意，需要增加NameSpace前缀
-	tbName := hb.buildTableName(tableName, namespace...)
+	tbName := hb.buildTableName(namespace, tableName)
 	err = hb.ServiceClient.DeleteSingle(context.Background(), tbName, tDelete)
 	return convertError(err)
 }
 
 // DeleteColumns 删除某些列
-// namespace 为可选的命名空间参数，如果不提供则使用默认的 SpaceName
-func (hb *ThriftHbaseConn) DeleteColumns(tableName, rowKey string, columnKeys map[string][]string, namespace ...string) error {
+func (hb *ThriftHbaseConn) DeleteColumns(namespace, tableName, rowKey string, columnKeys map[string][]string) error {
 	//如果columnKeys位空,则删除所有,直接使用DeleteRow代替
 	if columnKeys == nil {
-		return hb.DeleteRow(tableName, rowKey, namespace...)
+		return hb.DeleteRow(namespace, tableName, rowKey)
 	}
 	//先判断是否存在再删除
-	exist, err := hb.ExistRow(tableName, rowKey, namespace...)
+	exist, err := hb.ExistRow(namespace, tableName, rowKey)
 	if err != nil {
 		return convertError(err)
 	}
@@ -428,7 +396,7 @@ func (hb *ThriftHbaseConn) DeleteColumns(tableName, rowKey string, columnKeys ma
 		DeleteType: th.TDeleteType_DELETE_COLUMNS, //删除部分columns
 	}
 	//此处需要注意，需要增加NameSpace前缀
-	tbName := hb.buildTableName(tableName, namespace...)
+	tbName := hb.buildTableName(namespace, tableName)
 	err = hb.ServiceClient.DeleteSingle(context.Background(), tbName, tDelete)
 	return convertError(err)
 }
@@ -463,11 +431,11 @@ type ThriftHbaseConn struct {
 	HttpClient    *thrift.THttpClient
 	ServiceClient *th.THBaseServiceClient
 	CreateTime    time.Time
-	SpaceName     string
+	//SpaceName     string
 }
 
 // thriftHBaseConnFactory 用于产生连接的工厂
-func thriftHBaseConnFactory(url, user, passwd, spaceName string) (Connection, error) {
+func thriftHBaseConnFactory(url, user, passwd string) (Connection, error) {
 	//部分基础配置
 	conf := &thrift.TConfiguration{
 		ConnectTimeout: time.Second, //连接超时时间
@@ -499,7 +467,7 @@ func thriftHBaseConnFactory(url, user, passwd, spaceName string) (Connection, er
 		HttpClient:    httpClient,    //底层通讯链路
 		ServiceClient: serviceClient, //业务接口封装
 		CreateTime:    time.Now(),
-		SpaceName:     spaceName, //命名空间
+		//SpaceName:     spaceName, //命名空间
 	}
 	return hbaseConn, nil
 }
