@@ -86,6 +86,18 @@ func (r *RedisClient) SetValue(key string, value string, expire int) error {
 	return err
 }
 
+// SetValue expire的单位为秒
+func (r *RedisClient) SetValueForBytes(key string, value []byte, expire int) error {
+	var err error
+	if expire > 0 {
+		err = r.client.Set(r.ctx, key, value, time.Duration(expire)*time.Second).Err()
+	} else {
+		err = r.client.Set(r.ctx, key, value, 0).Err()
+	}
+
+	return err
+}
+
 // DeleteValues 删除多个key
 func (r *RedisClient) DeleteValues(keys []string) (int64, error) {
 	result, err := r.client.Del(r.ctx, keys...).Result()
